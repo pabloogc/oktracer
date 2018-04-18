@@ -1,6 +1,5 @@
 package com.minivac.oktracer
 
-import org.khronos.webgl.Float32Array
 import org.khronos.webgl.WebGLProgram
 import org.khronos.webgl.WebGLRenderingContext
 import org.khronos.webgl.WebGLRenderingContext.Companion.COLOR_BUFFER_BIT
@@ -10,16 +9,25 @@ import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import org.khronos.webgl.WebGLUniformLocation
 import org.w3c.dom.HTMLCanvasElement
 import kotlin.browser.document
+import kotlin.math.PI
+
+const val FPI = PI.toFloat()
 
 //language=GLSL
 private const val VS = """
     attribute vec3 aVertexPosition;
+    //attribute vec3 aVertexColor;
 
+    uniform mat4 uCMatrix;
     uniform mat4 uPMatrix;
     uniform mat4 uMVMatrix;
 
+    varying vec3 vColor;
+
     void main(void) {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vec4 p4 = vec4(aVertexPosition, 1.0);
+        vColor = (uMVMatrix * p4).xyz;
+        gl_Position = uPMatrix * uCMatrix * uMVMatrix * p4;
     }
 """
 
@@ -27,8 +35,10 @@ private const val VS = """
 private const val FS = """
     precision mediump float;
 
+    varying vec3 vColor;
+
     void main(void) {
-        gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+        gl_FragColor = vec4(vColor.xyz + 0.3, 1.0);
     }
 """
 
@@ -38,19 +48,27 @@ lateinit var canvas: HTMLCanvasElement
 lateinit var scene: Scene
 
 class Program(val glProgram: WebGLProgram) {
-    val proyectionMatrix = mat4.create()
-    val modelViewMatrix = mat4.create()
+    val cameraMatrix = mat4.create()
+    val projectionMatrix = mat4.create()
 
-    val proyectionMatrixLocation: WebGLUniformLocation
+    val cameraMatrixLocation: WebGLUniformLocation
+    val projectionMatrixLocation: WebGLUniformLocation
     val modelViewMatrixLocation: WebGLUniformLocation
     val vertexPositionLocation: Int
+    //val colorPositionLocation: Int
 
     init {
-        useProgram()
-        proyectionMatrixLocation = gl.getUniformLocation(glProgram, "uPMatrix")!!
+        gl.useProgram(glProgram)
+
+        cameraMatrixLocation = gl.getUniformLocation(glProgram, "uCMatrix")!!
+        projectionMatrixLocation = gl.getUniformLocation(glProgram, "uPMatrix")!!
         modelViewMatrixLocation = gl.getUniformLocation(glProgram, "uMVMatrix")!!
+
         vertexPositionLocation = gl.getAttribLocation(glProgram, "aVertexPosition")
-        gl.useProgram(null)
+        //colorPositionLocation = gl.getAttribLocation(glProgram, "aVertexColor")
+
+        gl.enableVertexAttribArray(vertexPositionLocation)
+        //gl.enableVertexAttribArray(colorPositionLocation)
     }
 
     fun useProgram() {
@@ -59,10 +77,25 @@ class Program(val glProgram: WebGLProgram) {
 }
 
 class Scene {
-    val triangle = Triangle(Triangle.ISOSCELES_VERTICES)
+    val triangle1 = Triangle(Triangle.ISOSCELES_VERTICES)
+    val triangle2 = Triangle(Triangle.ISOSCELES_VERTICES).apply {
+        translation = vec3.fromValues(0f, -1f, 1f)
+        rotation = vec3.fromValues(FPI / 2, 0f, 0f)
+    }
+
     fun render() {
         program.useProgram()
-        triangle.render(program)
+        mat4.perspective(program.projectionMatrix, 0.5f, canvas.width.toFloat() / canvas.height, 1f, 100f)
+        mat4.lookAt(
+                out = program.cameraMatrix,
+                eye = vec3.fromValues(0f, 0f, 10f),
+                center = vec3.fromValues(0f, 0f, 0f),
+                up = vec3.fromValues(0f, 1f, 0f))
+        gl.uniformMatrix4fv(program.projectionMatrixLocation, false, program.projectionMatrix)
+        gl.uniformMatrix4fv(program.cameraMatrixLocation, false, program.cameraMatrix)
+
+        triangle1.render(program)
+        triangle2.render(program)
     }
 }
 
@@ -89,10 +122,8 @@ private fun createScene() {
 }
 
 private fun render() {
+    program.useProgram()
     gl.viewport(0, 0, canvas.width, canvas.height)
-    mat4.ortho(program.proyectionMatrix, -1f, 1f, 1f, 1f, -1f, 10f)
-    gl.uniformMatrix4fv(program.proyectionMatrixLocation, false, mat4.unsafeCast<Float32Array>())
-    console.log("did it work?")
     scene.render()
 }
 

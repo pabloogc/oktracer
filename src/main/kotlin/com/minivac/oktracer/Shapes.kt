@@ -6,15 +6,29 @@ import org.khronos.webgl.WebGLRenderingContext.Companion.ARRAY_BUFFER
 import org.khronos.webgl.WebGLRenderingContext.Companion.FLOAT
 import org.khronos.webgl.WebGLRenderingContext.Companion.STATIC_DRAW
 import org.khronos.webgl.WebGLRenderingContext.Companion.TRIANGLES
+import org.khronos.webgl.get
 
-interface Shape {
+abstract class Shape {
+    val transform: mat4 = mat4.create()
+    var scale: vec3 = vec3.fromValues(1f, 1f, 1f)
+    var rotation: vec3 = vec3.create()
+    var translation: vec3 = vec3.create()
     //fun render()
+
+    fun calculateTransform() {
+        mat4.identity(transform)
+        mat4.scale(transform, transform, scale)
+        mat4.translate(transform, transform, translation)
+        mat4.rotateX(transform, transform, rotation[0])
+        mat4.rotateY(transform, transform, rotation[1])
+        mat4.rotateZ(transform, transform, rotation[2])
+    }
 }
 
-class Triangle(val vertices: Array<Float>) : Shape {
+class Triangle(vertices: Array<Float>) : Shape() {
 
     companion object {
-        val ISOSCELES_VERTICES = arrayOf<Float>(
+        val ISOSCELES_VERTICES = arrayOf(
                 0.0f, 1.0f, 0.0f,
                 -1.0f, -1.0f, 0.0f,
                 1.0f, -1.0f, 0.0f
@@ -32,8 +46,10 @@ class Triangle(val vertices: Array<Float>) : Shape {
     }
 
     fun render(program: Program) {
+        calculateTransform()
+        gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, transform)
+
         gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.enableVertexAttribArray(program.vertexPositionLocation)
         gl.vertexAttribPointer(program.vertexPositionLocation, 3, FLOAT, false, 0, 0)
         gl.drawArrays(TRIANGLES, 0, 3)
     }
