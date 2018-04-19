@@ -84,16 +84,10 @@ class Scene {
 
     var r = 0f
     val shapes = listOf(
-//            Triangle(),
-//            Triangle().transform {
-//                translation = vec3.fromValues(0f, -0.95f, 1f)
-//                rotation = vec3.fromValues(FPI / 2, 0f, 0f)
+//            Cube().transform {
+//                scale = vec3.fromValues(0f, 0f, 0f)
 //            },
-            Cube().transform {
-                //scale = vec3.fromValues(100f, 0.5f, 100f)
-                //translation = vec3.fromValues(0f, -1f, 0f)
-                //rotation = vec3.fromValues(0f, FPI / 4, 0f)
-            }
+            Sphere()
     )
 
     fun render() {

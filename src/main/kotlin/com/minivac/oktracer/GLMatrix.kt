@@ -1,6 +1,7 @@
 package com.minivac.oktracer
 
 import org.khronos.webgl.Float32Array
+import org.khronos.webgl.get
 
 external class mat4 : Float32Array {
     companion object {
@@ -32,6 +33,12 @@ external class mat4 : Float32Array {
 external class vec3 : Float32Array {
     companion object {
         fun create(): vec3
+        fun normalize(out: vec3, a: vec3): vec3
+        fun scale(out: vec3, a: vec3, b: Float): vec3
         fun fromValues(x: Float, y: Float, z: Float): vec3
     }
+}
+
+infix fun vec3.midPoint(v: vec3): vec3 {
+    return vec3.fromValues((this[0] + v[0]) / 2f, (this[1] + v[1]) / 2f, (this[2] + v[2]) / 2f)
 }
