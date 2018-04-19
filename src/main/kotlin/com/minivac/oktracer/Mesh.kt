@@ -11,13 +11,18 @@ import org.khronos.webgl.WebGLRenderingContext.Companion.TRIANGLES
 import org.khronos.webgl.WebGLRenderingContext.Companion.UNSIGNED_SHORT
 import org.khronos.webgl.get
 
-abstract class Shape<T : Shape<T>> {
+abstract class Mesh<T : Mesh<T>> {
     val modelMatrix: mat4 = mat4.create()
     var scale: vec3 = vec3.fromValues(1f, 1f, 1f)
     var rotation: vec3 = vec3.create()
     var translation: vec3 = vec3.create()
 
-    abstract fun render()
+    val verticesBuffer: WebGLBuffer = gl.createBuffer()!!
+    val drawOrderBuffer: WebGLBuffer = gl.createBuffer()!!
+    val normalBuffer: WebGLBuffer = gl.createBuffer()!!
+
+    var verticesCount = 0
+    var drawOrderCount = 0
 
     @Suppress("UNCHECKED_CAST")
     fun transform(fn: T.() -> Unit): T {
@@ -34,9 +39,39 @@ abstract class Shape<T : Shape<T>> {
         mat4.rotateY(modelMatrix, modelMatrix, rotation[1])
         mat4.rotateZ(modelMatrix, modelMatrix, rotation[2])
     }
+
+    protected fun bindVerticesBuffer(vertices: Array<Float>) {
+        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
+        gl.bufferData(ARRAY_BUFFER, Float32Array(vertices), STATIC_DRAW)
+        verticesCount = vertices.size
+    }
+
+    protected fun bindNormalsBuffer(normals: Array<Float>) {
+        gl.bindBuffer(ARRAY_BUFFER, normalBuffer)
+        gl.bufferData(ARRAY_BUFFER, Float32Array(normals), STATIC_DRAW)
+    }
+
+    protected fun bindDrawOrderBuffer(indexes: Array<Short>) {
+        gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
+        gl.bufferData(ELEMENT_ARRAY_BUFFER, Uint16Array(indexes), STATIC_DRAW)
+        drawOrderCount = indexes.count()
+    }
+
+    open fun render() {
+        gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, modelMatrix)
+
+        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
+        gl.vertexAttribPointer(program.vertexPositionLocation, 3, FLOAT, false, 0, 0)
+
+        gl.bindBuffer(ARRAY_BUFFER, normalBuffer)
+        gl.vertexAttribPointer(program.normalLocation, 3, FLOAT, false, 0, 0)
+
+        gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
+        gl.drawElements(TRIANGLES, drawOrderCount, UNSIGNED_SHORT, 0)
+    }
 }
 
-class Triangle(vertices: Array<Float> = ISOSCELES_VERTICES) : Shape<Triangle>() {
+class Triangle(vertices: Array<Float> = ISOSCELES_VERTICES) : Mesh<Triangle>() {
 
     companion object {
         val ISOSCELES_VERTICES = arrayOf(
@@ -46,28 +81,17 @@ class Triangle(vertices: Array<Float> = ISOSCELES_VERTICES) : Shape<Triangle>() 
         )
     }
 
-    private val verticesBuffer: WebGLBuffer
-
     init {
         if (vertices.size != 9) throw IllegalArgumentException()
-        verticesBuffer = gl.createBuffer()!!
-        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.bufferData(ARRAY_BUFFER, Float32Array(vertices), STATIC_DRAW)
-    }
-
-    override fun render() {
-        gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, modelMatrix)
-
-        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.vertexAttribPointer(program.vertexPositionLocation, 3, FLOAT, false, 0, 0)
-        gl.drawArrays(TRIANGLES, 0, 3)
+        bindVerticesBuffer(vertices)
+        bindDrawOrderBuffer(arrayOf(0, 1, 2))
     }
 }
 
 /**
  * Front and back, bottom left first, counter clockwise
  */
-class Cube(vertices: Array<Float> = CUBE_VERTICES) : Shape<Cube>() {
+class Cube(vertices: Array<Float> = CUBE_VERTICES) : Mesh<Cube>() {
     companion object {
         val CUBE_VERTICES = arrayOf(
                 -1f, -1f, +1f, //front
@@ -93,44 +117,22 @@ class Cube(vertices: Array<Float> = CUBE_VERTICES) : Shape<Cube>() {
                 0, 5, 4,
                 3, 2, 6, //Top
                 3, 6, 7
-
         )
     }
 
-    private val verticesBuffer: WebGLBuffer
-    private val drawOrderBuffer: WebGLBuffer
-
     init {
         if (vertices.size != CUBE_VERTICES.size) throw IllegalArgumentException()
-        verticesBuffer = gl.createBuffer()!!
-        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.bufferData(ARRAY_BUFFER, Float32Array(vertices), STATIC_DRAW)
-
-        drawOrderBuffer = gl.createBuffer()!!
-        gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
-        gl.bufferData(ELEMENT_ARRAY_BUFFER, Uint16Array(DRAW_ORDER), STATIC_DRAW)
-    }
-
-    override fun render() {
-        gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, modelMatrix)
-
-        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.vertexAttribPointer(program.vertexPositionLocation, 3, FLOAT, false, 0, 0)
-
-        gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
-        gl.drawElements(TRIANGLES, DRAW_ORDER.size, UNSIGNED_SHORT, 0)
+        bindVerticesBuffer(vertices)
+        bindNormalsBuffer(vertices) //This normals are wrong for cubes
+        bindDrawOrderBuffer(DRAW_ORDER)
     }
 }
 
 /**
  * Split Octahedron in midpoints, after N iterations we got nice a sphere
  */
-class Sphere(iterations: Int = 4) : Shape<Sphere>() {
-
-    private val drawOrderCount: Int
-
+class Sphere(iterations: Int = 4) : Mesh<Sphere>() {
     companion object {
-
         val OCTAHEDRON_VERTICES = arrayOf(
                 +0f, +1f, +0f,
                 +0f, +0f, -1f,
@@ -151,9 +153,6 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
                 5, 4, 1
         )
     }
-
-    private val verticesBuffer: WebGLBuffer
-    private val drawOrderBuffer: WebGLBuffer
 
     init {
         val sphereVertices: MutableList<Float> = OCTAHEDRON_VERTICES.asList().toMutableList()
@@ -205,22 +204,10 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
                     }
         }
 
-        drawOrderCount = sphereDrawOrder.size
-        verticesBuffer = gl.createBuffer()!!
-        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.bufferData(ARRAY_BUFFER, Float32Array(sphereVertices.toTypedArray()), STATIC_DRAW)
-        drawOrderBuffer = gl.createBuffer()!!
-        gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
-        gl.bufferData(ELEMENT_ARRAY_BUFFER, Uint16Array(sphereDrawOrder.toTypedArray()), STATIC_DRAW)
-    }
-
-    override fun render() {
-        gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, modelMatrix)
-
-        gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
-        gl.vertexAttribPointer(program.vertexPositionLocation, 3, FLOAT, false, 0, 0)
-
-        gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
-        gl.drawElements(TRIANGLES, drawOrderCount, UNSIGNED_SHORT, 0)
+        //Normals are just norm vectors pointing from the center
+        //to the vertex, so essentially the same as the vertex
+        bindVerticesBuffer(sphereVertices.toTypedArray())
+        bindNormalsBuffer(sphereVertices.toTypedArray())
+        bindDrawOrderBuffer(sphereDrawOrder.toTypedArray())
     }
 }
