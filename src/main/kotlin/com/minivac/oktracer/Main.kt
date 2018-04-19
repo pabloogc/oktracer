@@ -9,6 +9,7 @@ import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import org.khronos.webgl.WebGLUniformLocation
 import org.w3c.dom.HTMLCanvasElement
 import kotlin.browser.document
+import kotlin.browser.window
 import kotlin.math.PI
 
 const val FPI = PI.toFloat()
@@ -26,7 +27,7 @@ private const val VS = """
 
     void main(void) {
         vec4 p4 = vec4(aVertexPosition, 1.0);
-        vColor = (uMVMatrix * p4).xyz;
+        vColor = (p4).xyz;
         gl_Position = uPMatrix * uCMatrix * uMVMatrix * p4;
     }
 """
@@ -77,25 +78,42 @@ class Program(val glProgram: WebGLProgram) {
 }
 
 class Scene {
-    val triangle1 = Triangle(Triangle.ISOSCELES_VERTICES)
-    val triangle2 = Triangle(Triangle.ISOSCELES_VERTICES).apply {
-        translation = vec3.fromValues(0f, -1f, 1f)
-        rotation = vec3.fromValues(FPI / 2, 0f, 0f)
-    }
+    val cameraX = 0f
+    val cameraY = 0f
+    val cameraZ = 10f
+
+    var r = 0f
+    val shapes = listOf(
+//            Triangle(),
+//            Triangle().transform {
+//                translation = vec3.fromValues(0f, -0.95f, 1f)
+//                rotation = vec3.fromValues(FPI / 2, 0f, 0f)
+//            },
+            Cube().transform {
+                //scale = vec3.fromValues(100f, 0.5f, 100f)
+                //translation = vec3.fromValues(0f, -1f, 0f)
+                //rotation = vec3.fromValues(0f, FPI / 4, 0f)
+            }
+    )
 
     fun render() {
         program.useProgram()
         mat4.perspective(program.projectionMatrix, 0.5f, canvas.width.toFloat() / canvas.height, 1f, 100f)
         mat4.lookAt(
                 out = program.cameraMatrix,
-                eye = vec3.fromValues(0f, 0f, 10f),
-                center = vec3.fromValues(0f, 0f, 0f),
+                eye = vec3.fromValues(cameraX, cameraY, cameraZ),
+                center = vec3.fromValues(0f, cameraY, 0f), //Look at the origin in a straight line
                 up = vec3.fromValues(0f, 1f, 0f))
         gl.uniformMatrix4fv(program.projectionMatrixLocation, false, program.projectionMatrix)
         gl.uniformMatrix4fv(program.cameraMatrixLocation, false, program.cameraMatrix)
 
-        triangle1.render(program)
-        triangle2.render(program)
+        r += FPI / 360f
+        shapes.forEach {
+            it.transform {
+                rotation = vec3.fromValues(r * 2, r, r * 4)
+            }
+            it.render()
+        }
     }
 }
 
@@ -105,8 +123,6 @@ fun main(args: Array<String>) {
     program = Program(createProgram(VS, FS)!!)
     scene = Scene()
     console.log("Scene ready! $program")
-    createScene()
-    clear()
     render()
 }
 
@@ -117,17 +133,16 @@ private fun initGL() {
     gl.depthFunc(LEQUAL)
 }
 
-private fun createScene() {
-
-}
 
 private fun render() {
+    clear()
     program.useProgram()
     gl.viewport(0, 0, canvas.width, canvas.height)
     scene.render()
+    window.requestAnimationFrame { render() }
 }
 
 private fun clear() {
-    gl.clearColor(0.0f, 0.0f, 0.0f, 1.0f)
+    gl.clearColor(0.3f, 0.3f, 0.3f, 1.0f)
     gl.clear(COLOR_BUFFER_BIT or DEPTH_BUFFER_BIT)
 }
