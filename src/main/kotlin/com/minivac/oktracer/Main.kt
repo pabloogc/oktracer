@@ -79,14 +79,15 @@ class Program(val glProgram: WebGLProgram) {
 
 class Scene {
     val cameraX = 0f
-    val cameraY = 0f
+    val cameraY = 0.7f
     val cameraZ = 10f
 
     var r = 0f
     val shapes = listOf(
-//            Cube().transform {
-//                scale = vec3.fromValues(0f, 0f, 0f)
-//            },
+            Cube().transform {
+                scale = vec3.fromValues(3f, 0.1f, 3f)
+                translation = vec3.fromValues(0f, -1.3f, 0f)
+            },
             Sphere()
     )
 
@@ -102,12 +103,13 @@ class Scene {
         gl.uniformMatrix4fv(program.cameraMatrixLocation, false, program.cameraMatrix)
 
         r += FPI / 360f
-        shapes.forEach {
+
+        shapes.filter { it is Sphere }.forEach {
             it.transform {
                 rotation = vec3.fromValues(r * 2, r, r * 4)
             }
-            it.render()
         }
+        shapes.forEach { it.render() }
     }
 }
 

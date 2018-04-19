@@ -28,8 +28,8 @@ abstract class Shape<T : Shape<T>> {
 
     private fun updateTransform() {
         mat4.identity(modelMatrix)
-        mat4.scale(modelMatrix, modelMatrix, scale)
         mat4.translate(modelMatrix, modelMatrix, translation)
+        mat4.scale(modelMatrix, modelMatrix, scale)
         mat4.rotateX(modelMatrix, modelMatrix, rotation[0])
         mat4.rotateY(modelMatrix, modelMatrix, rotation[1])
         mat4.rotateZ(modelMatrix, modelMatrix, rotation[2])
@@ -163,8 +163,7 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
     private val drawOrderBuffer: WebGLBuffer
 
     init {
-        console.log("help:", OCTAHEDRON_VERTICES[8])
-        var sphereVertices: MutableList<Float> = OCTAHEDRON_VERTICES.asList().toMutableList()
+        val sphereVertices: MutableList<Float> = OCTAHEDRON_VERTICES.asList().toMutableList()
         var sphereDrawOrder = OCTAHEDRON_DRAW_ORDER.asList()
 
         for (i in 0..iterations) {
@@ -172,9 +171,18 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
                     .windowed(3, 3)
                     .flatMap { (i1, i2, i3) ->
 
-                        val v1 = vec3.fromValues(sphereVertices[i1 * 3 + 0], sphereVertices[i1 * 3 + 1], sphereVertices[i1 * 3 + 2])
-                        val v2 = vec3.fromValues(sphereVertices[i2 * 3 + 0], sphereVertices[i2 * 3 + 1], sphereVertices[i2 * 3 + 2])
-                        val v3 = vec3.fromValues(sphereVertices[i3 * 3 + 0], sphereVertices[i3 * 3 + 1], sphereVertices[i3 * 3 + 2])
+                        val v1 =
+                                vec3.fromValues(sphereVertices[i1 * 3 + 0],
+                                        sphereVertices[i1 * 3 + 1],
+                                        sphereVertices[i1 * 3 + 2])
+                        val v2 =
+                                vec3.fromValues(sphereVertices[i2 * 3 + 0],
+                                        sphereVertices[i2 * 3 + 1],
+                                        sphereVertices[i2 * 3 + 2])
+                        val v3 =
+                                vec3.fromValues(sphereVertices[i3 * 3 + 0],
+                                        sphereVertices[i3 * 3 + 1],
+                                        sphereVertices[i3 * 3 + 2])
 
                         //Bisect sides
                         val v12 = v1 midPoint v2
@@ -212,9 +220,6 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
         drawOrderBuffer = gl.createBuffer()!!
         gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
         gl.bufferData(ELEMENT_ARRAY_BUFFER, Uint16Array(sphereDrawOrder.toTypedArray()), STATIC_DRAW)
-
-        console.log("Draw Order", sphereDrawOrder.toTypedArray())
-        console.log("Vertices", sphereVertices.toTypedArray())
     }
 
     override fun render() {
