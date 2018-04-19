@@ -81,23 +81,17 @@ class Cube(vertices: Array<Float> = CUBE_VERTICES) : Shape<Cube>() {
         )
 
         private val DRAW_ORDER = arrayOf<Short>(
-                //Front
-                0, 1, 2,
+                0, 1, 2, //Front
                 0, 2, 3,
-                //Right
-                1, 5, 6,
+                1, 5, 6, //Right
                 1, 6, 2,
-                //Back
-                5, 4, 7,
+                5, 4, 7, //Back
                 5, 7, 6,
-                //Left
-                4, 3, 7,
+                4, 3, 7, //Left
                 4, 0, 3,
-                //Bottom
-                0, 1, 5,
+                0, 1, 5, //Bottom
                 0, 5, 4,
-                //Top
-                3, 2, 6,
+                3, 2, 6, //Top
                 3, 6, 7
 
         )
@@ -147,12 +141,11 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
         )
 
         private val OCTAHEDRON_DRAW_ORDER = arrayOf<Short>(
-                0, 1, 2,
+                0, 1, 2, //Top
                 0, 2, 3,
                 0, 3, 4,
                 0, 4, 1,
-
-                5, 1, 2,
+                5, 1, 2, //Bottom
                 5, 2, 3,
                 5, 3, 4,
                 5, 4, 1
@@ -171,18 +164,18 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
                     .windowed(3, 3)
                     .flatMap { (i1, i2, i3) ->
 
-                        val v1 =
-                                vec3.fromValues(sphereVertices[i1 * 3 + 0],
-                                        sphereVertices[i1 * 3 + 1],
-                                        sphereVertices[i1 * 3 + 2])
-                        val v2 =
-                                vec3.fromValues(sphereVertices[i2 * 3 + 0],
-                                        sphereVertices[i2 * 3 + 1],
-                                        sphereVertices[i2 * 3 + 2])
-                        val v3 =
-                                vec3.fromValues(sphereVertices[i3 * 3 + 0],
-                                        sphereVertices[i3 * 3 + 1],
-                                        sphereVertices[i3 * 3 + 2])
+                        val v1 = vec3.fromValues(
+                                sphereVertices[i1 * 3 + 0],
+                                sphereVertices[i1 * 3 + 1],
+                                sphereVertices[i1 * 3 + 2])
+                        val v2 = vec3.fromValues(
+                                sphereVertices[i2 * 3 + 0],
+                                sphereVertices[i2 * 3 + 1],
+                                sphereVertices[i2 * 3 + 2])
+                        val v3 = vec3.fromValues(
+                                sphereVertices[i3 * 3 + 0],
+                                sphereVertices[i3 * 3 + 1],
+                                sphereVertices[i3 * 3 + 2])
 
                         //Bisect sides
                         val v12 = v1 midPoint v2
@@ -211,7 +204,6 @@ class Sphere(iterations: Int = 4) : Shape<Sphere>() {
                         out
                     }
         }
-
 
         drawOrderCount = sphereDrawOrder.size
         verticesBuffer = gl.createBuffer()!!
