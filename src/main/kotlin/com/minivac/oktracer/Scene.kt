@@ -2,9 +2,11 @@ package com.minivac.oktracer
 
 import org.khronos.webgl.WebGLRenderingContext
 import org.khronos.webgl.get
-import org.khronos.webgl.set
 import kotlin.math.cos
+import kotlin.math.sign
 import kotlin.math.sin
+
+const val MAX_LIGHTS = 1
 
 class Scene {
     val cameraX = 0f
@@ -16,22 +18,32 @@ class Scene {
     var t = 0f
 
     private val meshes: List<Mesh<*>> = listOf(
+            Sphere().transform {
+                scale.setXYZ(0.05f)
+            },
+
+            Sphere().transform {
+                translation.set(-2f, 1f, 0f)
+            },
+            Sphere().transform {
+                translation.set(2f, 1f, 0f)
+            },
+            Sphere(2).transform {
+                scale.setXYZ(0.25f)
+            },
             Cube().transform {
-                scale.setXYZ(0.6f)
+                translation.set(-0.9f, -2f, 0f)
+                scale.setXYZ(0.3f)
             },
-            Sphere().transform {
-                translation[0] = -2.05f
+            Cube().transform {
+                translation.set(0f, -2f, 0f)
+                scale.setXYZ(0.3f)
             },
-            Sphere().transform {
-                translation[0] = 2.05f
+            Cube().transform {
+                translation.set(+0.9f, -2f, 0f)
+                scale.setXYZ(0.3f)
             }
-
     )
-
-    init {
-        lights[0].position[0] = 1.5f
-        lights[0].color.set(arrayOf(1f, 1f, 1f))
-    }
 
     fun render() {
         program.useProgram()
@@ -41,17 +53,17 @@ class Scene {
 
         t += FPI / 360f
 
-        val d1 = 1.5f
-        lights[0].position.set(arrayOf(d1 * cos(t), d1 * cos(t * 4), d1 * sin(t)))
-        lights[0].color.set(arrayOf(1f, 0f, 0.33f))
-        lights[0].ambient = 0.3f
+        val intensity = (cos(t * 5.5f) + 1) + 0.50f
+        lights[0].position.set(cos(t) * 2, cos(4 * t), cos(t * 3.3f) * 5f)
+        lights[0].color.set(intensity, intensity, intensity)
+        //lights[0].ambientCoefficient = (cos(t) + 1) / 16f
+        lights[0].ambientCoefficient = 0.3f
 
-        val d2 = 1.1f
-        lights[1].position.set(arrayOf(d2 * cos(2 * t), 0f, d2 * sin(2 * t)))
-        lights[1].color.set(arrayOf(0f, 0.8f, 0f))
-        lights[1].ambient = 0.1f
+        meshes[0].transform {
+            translation.set(lights[0].position)
+        }
 
-        meshes.filter { it is Cube }.forEach {
+        meshes.drop(1).forEach {
             it.transform {
                 rotation.setX(2 * t)
                 rotation.setY(t)
@@ -63,22 +75,24 @@ class Scene {
 
     private fun loadCameraTransforms() {
         mat4.perspective(program.projectionMatrix, 0.5f, canvas.width.toFloat() / canvas.height, 1f, 100f)
+        val eye = vec3.fromValues(cameraX, cameraY, cameraZ)
         mat4.lookAt(
                 out = program.cameraMatrix,
-                eye = vec3.fromValues(cameraX, cameraY, cameraZ),
+                eye = eye,
                 center = vec3.fromValues(0f, cameraY, 0f), //Look at the origin in a straight line
                 up = vec3.fromValues(0f, 1f, 0f))
         gl.uniformMatrix4fv(program.projectionMatrixLocation, false, program.projectionMatrix)
         gl.uniformMatrix4fv(program.cameraMatrixLocation, false, program.cameraMatrix)
+        gl.uniform3fv(program.eyePosition, eye)
     }
 
     private fun loadLights() {
-        val position = lights.flatMap { it.position.asFloatArray().toList() }.toTypedArray()
-        val color = lights.flatMap { it.color.asFloatArray().toList() }.toTypedArray()
-        val ambient = lights.flatMap { light -> light.color.asFloatArray().map { it * light.ambient }.toList() }.toTypedArray()
+        val position = lights.flatMap { it.position.toFloatArray().toList() }.toTypedArray()
+        val color = lights.flatMap { it.color.toFloatArray().toList() }.toTypedArray()
+        val ambient = lights.map { it.ambientCoefficient }.toTypedArray()
         gl.uniform3fv(program.lightPositionLocation, position)
         gl.uniform3fv(program.lightColorLocation, color)
-        gl.uniform3fv(program.lightAmbientLocation, ambient)
+        gl.uniform1fv(program.lightAmbientCoefficient, ambient)
     }
 
     fun clear() {

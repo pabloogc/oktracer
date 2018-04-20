@@ -31,48 +31,56 @@ external class mat4 : Float32Array {
     }
 }
 
+external class mat3 : Float32Array {
+    companion object {
+        fun create(): mat3
+        fun normalFromMat4(out: mat3, a: mat4)
+    }
+}
+
+//Vec3 Functions
+
 external class vec3 : Float32Array {
     companion object {
         fun create(): vec3
         fun normalize(out: vec3, a: vec3): vec3
-        fun scale(out: vec3, a: vec3, b: Float): vec3
         fun fromValues(x: Float, y: Float, z: Float): vec3
     }
 }
 
 fun vec3.set(x: Float, y: Float, z: Float): vec3 {
-    this[0] = x
-    this[1] = y
-    this[2] = z
-    return this
+    this[0] = x; this[1] = y; this[2] = z; return this
 }
 
 fun vec3.setXYZ(v: Float): vec3 {
-    this[0] = v
-    this[1] = v
-    this[2] = v
-    return this
+    this[0] = v; this[1] = v; this[2] = v; return this
 }
 
 fun vec3.setX(x: Float): vec3 {
-    this[0] = x
-    return this
+    this[0] = x; return this
 }
 
 fun vec3.setY(y: Float): vec3 {
-    this[1] = y
-    return this
+    this[1] = y; return this
 }
 
 fun vec3.setZ(z: Float): vec3 {
-    this[2] = z
-    return this
+    this[2] = z; return this
 }
 
-fun Float32Array.asFloatArray(): Array<Float> {
-    return Array(this.length, { i -> this[i] })
+fun vec3.normalized(): vec3 {
+    val out = vec3.create()
+    vec3.normalize(out, this); return out
+}
+
+fun vec3.normalize(): vec3 {
+    vec3.normalize(this, this); return this
 }
 
 infix fun vec3.midPoint(v: vec3): vec3 {
     return vec3.fromValues((this[0] + v[0]) / 2f, (this[1] + v[1]) / 2f, (this[2] + v[2]) / 2f)
+}
+
+fun Float32Array.toFloatArray(): Array<Float> {
+    return Array(this.length, { i -> this[i] })
 }
