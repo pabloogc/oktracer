@@ -4,15 +4,12 @@ import org.khronos.webgl.WebGLProgram
 import org.khronos.webgl.WebGLUniformLocation
 
 
-data class Light(val position: vec3 = vec3.create(),
-                 val color: vec3 = vec3.create(),
-                 var ambientCoefficient: Float = 0.20f)
-
 //language=GLSL
 const val VS = """
 
     attribute vec3 aVertexPosition;
     attribute vec3 aVertexNormal;
+    attribute vec2 aTexCoord;
 
     uniform mat4 uCMatrix; //Camera
     uniform mat4 uPMatrix; //Projection
@@ -21,11 +18,13 @@ const val VS = """
 
     varying vec3 vPosition;
     varying vec3 vNormal;
+    varying vec2 vTexCoord;
 
     void main(void) {
         vec4 p4 = vec4(aVertexPosition, 1.0);
         vNormal = normalize(uNMatrix * aVertexNormal);
         vPosition = (uMVMatrix * p4).xyz;
+        vTexCoord = aTexCoord;
         gl_Position = uPMatrix * uCMatrix * uMVMatrix * p4;
     }
 """
@@ -44,15 +43,21 @@ const val FS = """
     uniform vec3 uLightColor[MAX_LIGHTS];
     uniform float uLightAmbientCoefficient[MAX_LIGHTS];
 
+    //Textures
+    uniform sampler2D uColorSampler;
+    //uniform sampler2D uNormalSampler;
+    //uniform sampler2D uOcclusionSampler;
+    //uniform sampler2D uRoughnessSampler;
+
     //Material
     varying vec3 vPosition;
     varying vec3 vNormal;
+    varying vec2 vTexCoord;
 
     void main(void) {
         vec3 color = vec3(0.0, 0.0, 0.0);
 
-        //TODO: Texture mapping
-        vec3 materialColor = vec3(0.55, 0.12, 0.93);
+        vec3 materialColor = texture2D(uColorSampler, vTexCoord).rgb;
         vec3 materialSpecularColor = materialColor;
         float materialShininess = 20.0;
 
@@ -91,46 +96,57 @@ const val FS = """
 """
 
 class Program(val glProgram: WebGLProgram) {
-    val cameraMatrix = mat4.create()
-    val projectionMatrix = mat4.create()
+  val cameraMatrix = mat4.create()
+  val projectionMatrix = mat4.create()
 
+  //Camera
+  val eyePosition: WebGLUniformLocation?
+  val cameraMatrixLocation: WebGLUniformLocation?
+  val projectionMatrixLocation: WebGLUniformLocation?
+  val modelViewMatrixLocation: WebGLUniformLocation?
+  val normalMatrixLocation: WebGLUniformLocation?
+
+  //Lights
+  val lightPositionLocation: WebGLUniformLocation?
+  val lightColorLocation: WebGLUniformLocation?
+  val lightAmbientCoefficient: WebGLUniformLocation?
+
+  //Material
+  val colorSampler: WebGLUniformLocation?
+
+  //Attributes
+  val vertexPositionLocation: Int
+  val normalLocation: Int
+  val texCoordLocation: Int
+
+  init {
+    gl.useProgram(glProgram)
     //Camera
-    val eyePosition: WebGLUniformLocation?
-    val cameraMatrixLocation: WebGLUniformLocation?
-    val projectionMatrixLocation: WebGLUniformLocation?
-    val modelViewMatrixLocation: WebGLUniformLocation?
-    val normalMatrixLocation: WebGLUniformLocation?
+    eyePosition = gl.getUniformLocation(glProgram, "uEyePosition")
+    cameraMatrixLocation = gl.getUniformLocation(glProgram, "uCMatrix")
+    projectionMatrixLocation = gl.getUniformLocation(glProgram, "uPMatrix")
+    modelViewMatrixLocation = gl.getUniformLocation(glProgram, "uMVMatrix")
+    normalMatrixLocation = gl.getUniformLocation(glProgram, "uNMatrix")
 
-    //Lights
-    val lightPositionLocation: WebGLUniformLocation?
-    val lightColorLocation: WebGLUniformLocation?
-    val lightAmbientCoefficient: WebGLUniformLocation?
+    //Light
+    lightPositionLocation = gl.getUniformLocation(glProgram, "uLightPosition")
+    lightColorLocation = gl.getUniformLocation(glProgram, "uLightColor")
+    lightAmbientCoefficient = gl.getUniformLocation(glProgram, "uLightAmbientCoefficient")
 
-    val vertexPositionLocation: Int
-    val normalLocation: Int
+    //Material
+    colorSampler = gl.getUniformLocation(glProgram, "uColorSampler")
 
-    init {
-        gl.useProgram(glProgram)
-        //Camera
-        eyePosition = gl.getUniformLocation(glProgram, "uEyePosition")
-        cameraMatrixLocation = gl.getUniformLocation(glProgram, "uCMatrix")
-        projectionMatrixLocation = gl.getUniformLocation(glProgram, "uPMatrix")
-        modelViewMatrixLocation = gl.getUniformLocation(glProgram, "uMVMatrix")
-        normalMatrixLocation = gl.getUniformLocation(glProgram, "uNMatrix")
-        //Light
-        lightPositionLocation = gl.getUniformLocation(glProgram, "uLightPosition")
-        lightColorLocation = gl.getUniformLocation(glProgram, "uLightColor")
-        lightAmbientCoefficient = gl.getUniformLocation(glProgram, "uLightAmbientCoefficient")
+    vertexPositionLocation = gl.getAttribLocation(glProgram, "aVertexPosition")
+    normalLocation = gl.getAttribLocation(glProgram, "aVertexNormal")
+    texCoordLocation = gl.getAttribLocation(glProgram, "aTexCoord")
 
-        vertexPositionLocation = gl.getAttribLocation(glProgram, "aVertexPosition")
-        normalLocation = gl.getAttribLocation(glProgram, "aVertexNormal")
+    gl.enableVertexAttribArray(vertexPositionLocation)
+    gl.enableVertexAttribArray(normalLocation)
+    gl.enableVertexAttribArray(texCoordLocation)
+  }
 
-        gl.enableVertexAttribArray(vertexPositionLocation)
-        gl.enableVertexAttribArray(normalLocation)
-    }
-
-    fun useProgram() {
-        gl.useProgram(glProgram)
-    }
+  fun useProgram() {
+    gl.useProgram(glProgram)
+  }
 }
 
