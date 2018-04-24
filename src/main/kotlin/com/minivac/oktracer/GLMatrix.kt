@@ -117,3 +117,16 @@ fun <T : Float32Array> Iterable<T>.toFloatArray(): Array<Float> {
 fun clamp(value: Float, low: Float, high: Float): Float {
   return max(low, min(value, high))
 }
+
+//General math
+fun Float.clamp(min: Float, max: Float): Float {
+  return min(max(min, this), max)
+}
+
+fun Float.toDeg(): Float {
+  return 180f * this / PI
+}
+
+fun Float.toRad(): Float {
+  return PI * this / 180f
+}

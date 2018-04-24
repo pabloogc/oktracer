@@ -2,8 +2,6 @@ package com.minivac.oktracer
 
 import org.khronos.webgl.WebGLRenderingContext.Companion.CLAMP_TO_EDGE
 import org.khronos.webgl.WebGLRenderingContext.Companion.LINEAR
-import org.khronos.webgl.WebGLRenderingContext.Companion.LINEAR_MIPMAP_NEAREST
-import org.khronos.webgl.WebGLRenderingContext.Companion.REPEAT
 import org.khronos.webgl.WebGLRenderingContext.Companion.RGBA
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE_2D
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE_MAG_FILTER
@@ -15,31 +13,58 @@ import org.w3c.dom.HTMLImageElement
 import kotlin.browser.document
 
 object Materials {
-  val crystal = Material(
-//      "/oktracer/web/textures/crystal/color.jpg"
-      "/oktracer/web/textures/grid_pattern_uv.jpg"
+  val metal = Material(
+      color = Texture("/oktracer/web/textures/metal/Metal_plate_005_COLOR.jpg"),
+      normal = Texture("/oktracer/web/textures/metal/Metal_plate_005_NORM.jpg"),
+      displacement = Texture("/oktracer/web/textures/metal/Metal_plate_005_DISP.png"),
+      occlusion = Texture("/oktracer/web/textures/metal/Metal_plate_005_OCC.jpg"),
+      roughness = Texture("/oktracer/web/textures/metal/Metal_plate_005_ROUGH.jpg"),
+      displacementCoefficient = 10 / 255f
+  )
+
+  val stone = Material(
+      color = Texture("/oktracer/web/textures/stone/Stone_Wall_009_COLOR.jpg"),
+      normal = Texture("/oktracer/web/textures/stone/Stone_Wall_009_NORM.jpg"),
+      displacement = Texture("/oktracer/web/textures/stone/Stone_Wall_009_DISP.png"),
+      occlusion = Texture("/oktracer/web/textures/stone/Stone_Wall_009_OCC.jpg"),
+      roughness = Texture("/oktracer/web/textures/stone/Stone_Wall_009_ROUGH.jpg"),
+      displacementCoefficient = 50 / 255f
+  )
+
+  val rock = Material(
+      color = Texture("/oktracer/web/textures/rock/Rough_Rock_022_COLOR.jpg"),
+      normal = Texture("/oktracer/web/textures/rock/Rough_Rock_022_NORM.jpg"),
+      displacement = Texture("/oktracer/web/textures/rock/Rough_Rock_022_DISP.png"),
+      occlusion = Texture("/oktracer/web/textures/rock/Rough_Rock_022_OCC.jpg"),
+      roughness = Texture("/oktracer/web/textures/rock/Rough_Rock_022_ROUGH.jpg"),
+      displacementCoefficient = 40 / 255f
   )
 
   fun load(onLoadComplete: () -> Unit) {
-    val materials = listOf(crystal)
+    val materials = listOf(metal, stone, rock)
     var texturesToLoad = materials.size
-    fun onTextureLoaded() {
+    fun onMaterialLoaded() {
       texturesToLoad--
       if (texturesToLoad == 0) {
         onLoadComplete()
       }
     }
     materials.forEach {
-      it.load { onTextureLoaded() }
+      it.load { onMaterialLoaded() }
     }
   }
 }
 
-class Material(color: String) {
-  val color = Texture(color)
+data class Material(
+    val color: Texture,
+    val normal: Texture,
+    val displacement: Texture,
+    val occlusion: Texture,
+    val roughness: Texture,
+    val displacementCoefficient: Float = 100f / 255f) {
 
   fun load(onLoadComplete: () -> Unit) {
-    val textures = listOf(color)
+    val textures = listOf(color, normal, displacement, occlusion, roughness)
 
     var texturesToLoad = textures.size
     fun onTextureLoaded() {
@@ -54,8 +79,12 @@ class Material(color: String) {
   }
 }
 
-class Texture(val path: String) {
+data class Texture(val path: String) {
   val texture = gl.createTexture()!!
+
+  private fun isPowerOfTwo(v: Int): Boolean {
+    return (v and (v - 1)) == 0
+  }
 
   fun load(onLoadComplete: () -> Unit) {
     val image = document.createElement("img") as HTMLImageElement
@@ -65,7 +94,14 @@ class Texture(val path: String) {
       // Now that the image has loaded make copy it to the texture.
       gl.bindTexture(TEXTURE_2D, texture)
       gl.texImage2D(TEXTURE_2D, 0, RGBA, RGBA, UNSIGNED_BYTE, image)
-      gl.generateMipmap(TEXTURE_2D)
+      if (isPowerOfTwo(image.width) && isPowerOfTwo(image.height)) {
+        gl.generateMipmap(TEXTURE_2D)
+      } else {
+        gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR)
+        gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR)
+        gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE)
+        gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE)
+      }
       onLoadComplete()
     })
   }

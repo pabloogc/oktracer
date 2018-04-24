@@ -1,19 +1,33 @@
 package com.minivac.oktracer
 
-import org.khronos.webgl.WebGLRenderingContext
 import org.khronos.webgl.WebGLRenderingContext.Companion.COLOR_BUFFER_BIT
 import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_BUFFER_BIT
-import kotlin.math.cos
-import kotlin.math.sin
+import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_TEST
+import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
+import org.w3c.dom.events.KeyboardEvent
+import kotlin.browser.window
 
 const val MAX_LIGHTS = 1
 
 class Scene {
   var cameraX = 0f
-  var cameraY = 1f
+  var cameraY = 0f
   var cameraZ = 10f
 
   private val lights = Array(MAX_LIGHTS, { _ -> Light() })
+
+  init {
+    window.onkeyup = {
+      val event = it as? KeyboardEvent
+      event?.run {
+        when (event.key) {
+          "q" -> meshes.forEach { it.material = Materials.metal }
+          "w" -> meshes.forEach { it.material = Materials.rock }
+          "e" -> meshes.forEach { it.material = Materials.stone }
+        }
+      }
+    }
+  }
 
   var t = 0f
   val axisWidth = 0.005f
@@ -21,9 +35,15 @@ class Scene {
 
   private val meshes: List<Mesh<*>> = listOf(
       Sphere().transform {
-        translation.y = 0f
-      },
-      //Axis
+        material = Materials.stone
+      }
+//      Cube().transform {
+//        material = Materials.metal
+//        translation.x = 2f
+//      }
+  )
+
+  private val axis: List<Mesh<*>> = listOf(
       Cube().transform {
         scale.set(axisLength, axisWidth, axisWidth)
         translation.x = axisLength
@@ -35,45 +55,45 @@ class Scene {
       Cube().transform {
         scale.set(axisWidth, axisWidth, axisLength)
         translation.z = axisLength
-      },
-      Sphere().transform {
-        scale.setXYZ(0.01f)
       }
   )
 
   fun render() {
+    t += PI / 360f
+
     program.useProgram()
 
-    gl.enable(WebGLRenderingContext.DEPTH_TEST)
-    gl.depthFunc(WebGLRenderingContext.LEQUAL)
+    gl.enable(DEPTH_TEST)
+    gl.depthFunc(LEQUAL)
 
     loadCameraTransforms()
     loadLights()
 
-    t += PI / 360f
-
     val d = 10
-    cameraX = d * cos(t)
-    cameraZ = d * sin(t)
+//    cameraX = d * cos(t)
+//    cameraZ = d * sin(t)
 
-    val intensity = 1f
-    //lights[0].position.set(cos(t) * 2, cos(4 * t), cos(t * 3.3f) * 5f)
+    val intensity = 6f
+    val distance = 2f
     lights[0].color.set(intensity, intensity, intensity)
-    //lights[0].ambientCoefficient = (cos(t) + 1) / 16f
-    lights[0].ambientCoefficient = 0.3f
-    lights[0].position.set(cameraX, 3f, cameraZ)
-    meshes.last().transform {
-      translation.set(lights[0].position)
-    }
+    lights[0].ambientCoefficient = 5 * intensity / 255f
+    lights[0].position.set(
+        distance,
+        distance,
+        1f)
 
-    meshes.dropLast(4).forEach {
+    meshes.forEach {
       it.transform {
+        rotation.x = t
+        rotation.y = 2 * t
+        rotation.z = 3 * t
         //rotation.y = PI - PI / 4
         //rotation.z = t
-        translation.y = 0f
+        //translation.y = cos(t)
       }
     }
 
+    //axis.forEach { it.render() }
     meshes.forEach { it.render() }
   }
 

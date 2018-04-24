@@ -6,17 +6,16 @@ import org.khronos.webgl.WebGLBuffer
 import org.khronos.webgl.WebGLRenderingContext.Companion.ARRAY_BUFFER
 import org.khronos.webgl.WebGLRenderingContext.Companion.ELEMENT_ARRAY_BUFFER
 import org.khronos.webgl.WebGLRenderingContext.Companion.FLOAT
-import org.khronos.webgl.WebGLRenderingContext.Companion.LINES
-import org.khronos.webgl.WebGLRenderingContext.Companion.LINE_LOOP
 import org.khronos.webgl.WebGLRenderingContext.Companion.STATIC_DRAW
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE0
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE1
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE2
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE_2D
 import org.khronos.webgl.WebGLRenderingContext.Companion.TRIANGLES
 import org.khronos.webgl.WebGLRenderingContext.Companion.UNSIGNED_SHORT
 import org.khronos.webgl.get
-import kotlin.js.Math
-import kotlin.js.Math.random
-import kotlin.math.*
+import kotlin.math.cos
+import kotlin.math.sin
 
 abstract class Mesh<T : Mesh<T>> {
   val modelMatrix: mat4 = mat4.create()
@@ -34,7 +33,7 @@ abstract class Mesh<T : Mesh<T>> {
   var verticesCount = 0
   var drawOrderCount = 0
 
-  protected var loaded = true
+  var material: Material = Materials.metal
 
   @Suppress("UNCHECKED_CAST")
   fun transform(fn: T.() -> Unit): T {
@@ -77,8 +76,6 @@ abstract class Mesh<T : Mesh<T>> {
   }
 
   open fun render() {
-    if (!loaded) return
-
     gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, modelMatrix)
     gl.uniformMatrix3fv(program.normalMatrixLocation, false, normalMatrix)
 
@@ -92,8 +89,17 @@ abstract class Mesh<T : Mesh<T>> {
     gl.vertexAttribPointer(program.texCoordLocation, 2, FLOAT, false, 0, 0)
 
     gl.activeTexture(TEXTURE0)
-    gl.bindTexture(TEXTURE_2D, Materials.crystal.color.texture)
+    gl.bindTexture(TEXTURE_2D, material.color.texture)
     gl.uniform1i(program.colorSampler, 0)
+
+    gl.activeTexture(TEXTURE1)
+    gl.bindTexture(TEXTURE_2D, material.normal.texture)
+    gl.uniform1i(program.normalSampler, 1)
+
+    gl.activeTexture(TEXTURE2)
+    gl.bindTexture(TEXTURE_2D, material.displacement.texture)
+    gl.uniform1i(program.displacementSampler, 2)
+    gl.uniform1f(program.displacementCoefficient, material.displacementCoefficient)
 
     gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
     gl.drawElements(TRIANGLES, drawOrderCount, UNSIGNED_SHORT, 0)
@@ -133,7 +139,7 @@ class Cube : Mesh<Cube>() {
 /**
  * Split Octahedron in midpoints, after N iterations we got nice a sphere
  */
-class Sphere(val xc: Int = 16, val yc: Int = 16) : Mesh<Sphere>() {
+class Sphere(val xc: Int = 64, val yc: Int = 64) : Mesh<Sphere>() {
 
   private var maxDrawOrder = -1
 
@@ -151,7 +157,7 @@ class Sphere(val xc: Int = 16, val yc: Int = 16) : Mesh<Sphere>() {
     for (i in 0..xc) {
       for (j in 0..yc) {
 
-        val a = 2f * PI * i * stepX
+        val a = TAU * i * stepX
         val b = PI * j * stepY
 
         //Sphere
@@ -159,7 +165,7 @@ class Sphere(val xc: Int = 16, val yc: Int = 16) : Mesh<Sphere>() {
         val y = cos(b)
         val z = sin(a) * sin(b)
 
-        val u = 1f - a / PI
+        val u = 1f - a / TAU
         val v = b / PI
 
         vertices.addAll(listOf(x, y, z))
