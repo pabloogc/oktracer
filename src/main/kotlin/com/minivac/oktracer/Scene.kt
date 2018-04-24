@@ -6,13 +6,15 @@ import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_TEST
 import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import org.w3c.dom.events.KeyboardEvent
 import kotlin.browser.window
+import kotlin.math.cos
+import kotlin.math.sin
 
 const val MAX_LIGHTS = 1
 
 class Scene {
   var cameraX = 0f
   var cameraY = 0f
-  var cameraZ = 10f
+  var cameraZ = -10f
 
   private val lights = Array(MAX_LIGHTS, { _ -> Light() })
 
@@ -35,6 +37,15 @@ class Scene {
 
   private val meshes: List<Mesh<*>> = listOf(
       Sphere().transform {
+        translation.x = 2.2f
+        material = Materials.metal
+      },
+      Sphere().transform {
+        translation.x = -2.2f
+        material = Materials.rock
+      },
+      Sphere().transform {
+        translation.x = 0f
         material = Materials.stone
       }
 //      Cube().transform {
@@ -77,19 +88,14 @@ class Scene {
     val distance = 2f
     lights[0].color.set(intensity, intensity, intensity)
     lights[0].ambientCoefficient = 5 * intensity / 255f
-    lights[0].position.set(
-        distance,
-        distance,
-        1f)
+    lights[0].position.set(2 * cos(4 * t), 0f, -3f)
 
     meshes.forEach {
       it.transform {
-        rotation.x = t
+        //        rotation.x = t
         rotation.y = 2 * t
-        rotation.z = 3 * t
-        //rotation.y = PI - PI / 4
-        //rotation.z = t
-        //translation.y = cos(t)
+//        translation.x = sin(t)
+//        translation.y = sin(t)
       }
     }
 

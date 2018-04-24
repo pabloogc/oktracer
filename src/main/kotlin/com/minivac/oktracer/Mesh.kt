@@ -10,6 +10,8 @@ import org.khronos.webgl.WebGLRenderingContext.Companion.STATIC_DRAW
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE0
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE1
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE2
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE3
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE4
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE_2D
 import org.khronos.webgl.WebGLRenderingContext.Companion.TRIANGLES
 import org.khronos.webgl.WebGLRenderingContext.Companion.UNSIGNED_SHORT
@@ -26,6 +28,8 @@ abstract class Mesh<T : Mesh<T>> {
   var translation: vec3 = vec3.create()
 
   val verticesBuffer: WebGLBuffer = gl.createBuffer()!!
+  val tangentBuffer: WebGLBuffer = gl.createBuffer()!!
+  val bitangentBuffer: WebGLBuffer = gl.createBuffer()!!
   val drawOrderBuffer: WebGLBuffer = gl.createBuffer()!!
   val normalBuffer: WebGLBuffer = gl.createBuffer()!!
   val texCoordBuffer: WebGLBuffer = gl.createBuffer()!!
@@ -53,10 +57,36 @@ abstract class Mesh<T : Mesh<T>> {
     mat3.normalFromMat4(normalMatrix, modelMatrix)
   }
 
+  protected fun bindData(vertices: List<vec3>,
+                         normals: List<vec3>,
+                         texCoords: List<vec2>,
+                         indexes: List<Short>) {
+    bindVerticesBuffer(vertices.toFloatArray())
+    bindNormalsBuffer(normals.toFloatArray())
+    bindTexCoordBuffer(texCoords.toFloatArray())
+    bindDrawOrderBuffer(indexes.toTypedArray())
+    val (tangents, bitangents) = computeTangentsAndBiTangents(
+        vertices,
+        normals,
+        texCoords,
+        indexes)
+    bindTangentsBuffer(tangents.toFloatArray())
+    bindBitangentsBuffer(bitangents.toFloatArray())
+  }
+
   protected fun bindVerticesBuffer(vertices: Array<Float>) {
     gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
     gl.bufferData(ARRAY_BUFFER, Float32Array(vertices), STATIC_DRAW)
-    verticesCount = vertices.size
+  }
+
+  protected fun bindTangentsBuffer(tangents: Array<Float>) {
+    gl.bindBuffer(ARRAY_BUFFER, tangentBuffer)
+    gl.bufferData(ARRAY_BUFFER, Float32Array(tangents), STATIC_DRAW)
+  }
+
+  protected fun bindBitangentsBuffer(bitangents: Array<Float>) {
+    gl.bindBuffer(ARRAY_BUFFER, bitangentBuffer)
+    gl.bufferData(ARRAY_BUFFER, Float32Array(bitangents), STATIC_DRAW)
   }
 
   protected fun bindNormalsBuffer(normals: Array<Float>) {
@@ -76,11 +106,19 @@ abstract class Mesh<T : Mesh<T>> {
   }
 
   open fun render() {
+    if (!material.loaded) return
+
     gl.uniformMatrix4fv(program.modelViewMatrixLocation, false, modelMatrix)
     gl.uniformMatrix3fv(program.normalMatrixLocation, false, normalMatrix)
 
     gl.bindBuffer(ARRAY_BUFFER, verticesBuffer)
     gl.vertexAttribPointer(program.vertexPositionLocation, 3, FLOAT, false, 0, 0)
+
+    gl.bindBuffer(ARRAY_BUFFER, tangentBuffer)
+    gl.vertexAttribPointer(program.tangentLocation, 3, FLOAT, false, 0, 0)
+
+    gl.bindBuffer(ARRAY_BUFFER, bitangentBuffer)
+    gl.vertexAttribPointer(program.bitangentLocation, 3, FLOAT, false, 0, 0)
 
     gl.bindBuffer(ARRAY_BUFFER, normalBuffer)
     gl.vertexAttribPointer(program.normalLocation, 3, FLOAT, false, 0, 0)
@@ -100,6 +138,15 @@ abstract class Mesh<T : Mesh<T>> {
     gl.bindTexture(TEXTURE_2D, material.displacement.texture)
     gl.uniform1i(program.displacementSampler, 2)
     gl.uniform1f(program.displacementCoefficient, material.displacementCoefficient)
+
+    gl.activeTexture(TEXTURE3)
+    gl.bindTexture(TEXTURE_2D, material.roughness.texture)
+    gl.uniform1i(program.roughnessSampler, 3)
+    gl.uniform1f(program.materialShininess, material.shininess)
+
+    gl.activeTexture(TEXTURE4)
+    gl.bindTexture(TEXTURE_2D, material.occlusion.texture)
+    gl.uniform1i(program.occlusionSampler, 4)
 
     gl.bindBuffer(ELEMENT_ARRAY_BUFFER, drawOrderBuffer)
     gl.drawElements(TRIANGLES, drawOrderCount, UNSIGNED_SHORT, 0)
@@ -141,14 +188,12 @@ class Cube : Mesh<Cube>() {
  */
 class Sphere(val xc: Int = 64, val yc: Int = 64) : Mesh<Sphere>() {
 
-  private var maxDrawOrder = -1
-
   init {
     val vertexCount = xc * yc
     val facesCount = vertexCount / 2
 
-    var vertices: MutableList<Float> = ArrayList(vertexCount)
-    val textureCoords: MutableList<Float> = ArrayList(vertexCount)
+    var vertices: MutableList<vec3> = ArrayList(vertexCount)
+    val textureCoords: MutableList<vec2> = ArrayList(vertexCount)
     val drawOrder = ArrayList<Short>(facesCount * 3)
 
     val stepX = 1f / xc
@@ -168,8 +213,8 @@ class Sphere(val xc: Int = 64, val yc: Int = 64) : Mesh<Sphere>() {
         val u = 1f - a / TAU
         val v = b / PI
 
-        vertices.addAll(listOf(x, y, z))
-        textureCoords.addAll(listOf(u, v))
+        vertices.add(vec3.fromValues(x, y, z))
+        textureCoords.add(vec2.fromValues(u, v))
       }
     }
 
@@ -184,21 +229,8 @@ class Sphere(val xc: Int = 64, val yc: Int = 64) : Mesh<Sphere>() {
       }
     }
 
-    maxDrawOrder = drawOrder.size
     //Normals are just norm vectors pointing from the center
     //to the vertex, so essentially the same as the vertex
-    bindVerticesBuffer(vertices.toTypedArray())
-    bindNormalsBuffer(vertices.toTypedArray())
-    bindTexCoordBuffer(textureCoords.toTypedArray())
-    bindDrawOrderBuffer(drawOrder.toTypedArray())
+    bindData(vertices, vertices, textureCoords, drawOrder)
   }
 }
-
-
-//
-////Compute polars
-//val sphereTextures = sphereVertices
-//    .windowed(3, 3)
-//    .flatMap { (x, y, z) ->
-//      listOf(atan2(y, x) / PI + 1f, asin(z) / PI + 0.5f)
-//    }

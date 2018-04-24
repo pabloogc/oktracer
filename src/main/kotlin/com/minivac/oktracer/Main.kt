@@ -30,10 +30,9 @@ private fun initGL() {
 }
 
 private fun loadTexturesAndRender() {
-  Materials.load {
-    scene = Scene()
-    render()
-  }
+  Materials.load()
+  scene = Scene()
+  render()
 }
 
 private fun render() {

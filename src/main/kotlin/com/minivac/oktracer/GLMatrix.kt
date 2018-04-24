@@ -51,7 +51,10 @@ external class vec3 : Float32Array {
     fun create(): vec3
     fun normalize(out: vec3, a: vec3): vec3
     fun fromValues(x: Float, y: Float, z: Float): vec3
+    fun cross(out: vec3, a: vec3, b: vec3)
+    fun dot(a: vec3, b: vec3): Float
     fun angle(a: vec3, b: vec3): Float
+    fun sub(out: vec3, a: vec3, b: vec3)
   }
 }
 
@@ -59,51 +62,39 @@ external class vec2 : Float32Array {
   companion object {
     fun create(): vec2
     fun fromValues(x: Float, y: Float): vec2
+    fun sub(out: vec2, a: vec2, b: vec2)
   }
 }
 
-var vec3.x: Float
+//####################################################
+//Generic VecX
+//####################################################
+
+var Float32Array.x: Float
   get() = this[0]
   set(value) {
     this[0] = value
   }
 
-var vec3.y: Float
+var Float32Array.y: Float
   get() = this[1]
   set(value) {
     this[1] = value
   }
 
-var vec3.z: Float
+var Float32Array.z: Float
   get() = this[2]
   set(value) {
     this[2] = value
   }
 
-fun vec3.set(x: Float, y: Float, z: Float): vec3 {
-  this[0] = x; this[1] = y; this[2] = z; return this
-}
-
-fun vec3.setXYZ(v: Float): vec3 {
-  this[0] = v; this[1] = v; this[2] = v; return this
-}
-
-fun vec3.normalize(): vec3 {
-  vec3.normalize(this, this); return this
-}
-
-infix fun vec3.midPoint(v: vec3): vec3 {
-  return vec3.fromValues((this[0] + v[0]) / 2f, (this[1] + v[1]) / 2f, (this[2] + v[2]) / 2f)
-}
-
-//Vec2 Functions
-
-infix fun vec2.midPoint(v: vec2): vec2 {
-  return vec2.fromValues((this[0] + v[0]) / 2f, (this[1] + v[1]) / 2f)
-}
-
-fun Float32Array.toFloatArray(): Array<Float> {
-  return Array(this.length, { i -> this[i] })
+operator fun <T : Float32Array> T.times(scalar: Float): T {
+  @Suppress("UNCHECKED_CAST")
+  val out = Float32Array(this) as T
+  for (i in 0..this.length) {
+    out[i] = out[i] * scalar
+  }
+  return out
 }
 
 fun <T : Float32Array> Array<T>.toFloatArray(): Array<Float> {
@@ -114,11 +105,66 @@ fun <T : Float32Array> Iterable<T>.toFloatArray(): Array<Float> {
   return this.flatMap { it.toFloatArray().asIterable() }.toTypedArray()
 }
 
+//####################################################
+//Vec3
+//####################################################
+
+fun vec3.set(x: Float, y: Float, z: Float): vec3 {
+  this[0] = x; this[1] = y; this[2] = z; return this
+}
+
+fun vec3.setXYZ(v: Float): vec3 {
+  this[0] = v; this[1] = v; this[2] = v; return this
+}
+
+fun vec3.normalize(): vec3 {
+  val out = vec3.create()
+  vec3.normalize(out, this); return this
+}
+
+operator fun vec3.minus(other: vec3): vec3 {
+  val out = vec3.create()
+  vec3.sub(out, this, other); return out
+}
+
+infix fun vec3.dot(other: vec3): Float {
+  return vec3.dot(this, other)
+}
+
+infix fun vec3.midPoint(v: vec3): vec3 {
+  return vec3.fromValues((this[0] + v[0]) / 2f, (this[1] + v[1]) / 2f, (this[2] + v[2]) / 2f)
+}
+
+infix fun vec3.cross(other: vec3): vec3 {
+  val out = vec3.create()
+  vec3.cross(out, this, other); return out
+}
+
+//####################################################
+//Vec2
+//####################################################
+
+infix fun vec2.midPoint(v: vec2): vec2 {
+  return vec2.fromValues((this[0] + v[0]) / 2f, (this[1] + v[1]) / 2f)
+}
+
+operator fun vec2.minus(other: vec2): vec2 {
+  val out = vec2.create()
+  vec2.sub(out, this, other); return out
+}
+
+fun Float32Array.toFloatArray(): Array<Float> {
+  return Array(this.length, { i -> this[i] })
+}
+
 fun clamp(value: Float, low: Float, high: Float): Float {
   return max(low, min(value, high))
 }
 
-//General math
+//####################################################
+//General
+//####################################################
+
 fun Float.clamp(min: Float, max: Float): Float {
   return min(max(min, this), max)
 }

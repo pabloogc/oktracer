@@ -19,7 +19,8 @@ object Materials {
       displacement = Texture("/oktracer/web/textures/metal/Metal_plate_005_DISP.png"),
       occlusion = Texture("/oktracer/web/textures/metal/Metal_plate_005_OCC.jpg"),
       roughness = Texture("/oktracer/web/textures/metal/Metal_plate_005_ROUGH.jpg"),
-      displacementCoefficient = 10 / 255f
+      displacementCoefficient = 10 / 255f,
+      shininess = 1 / 25f
   )
 
   val stone = Material(
@@ -28,7 +29,8 @@ object Materials {
       displacement = Texture("/oktracer/web/textures/stone/Stone_Wall_009_DISP.png"),
       occlusion = Texture("/oktracer/web/textures/stone/Stone_Wall_009_OCC.jpg"),
       roughness = Texture("/oktracer/web/textures/stone/Stone_Wall_009_ROUGH.jpg"),
-      displacementCoefficient = 50 / 255f
+      displacementCoefficient = 50 / 255f,
+      shininess = 50f
   )
 
   val rock = Material(
@@ -37,11 +39,22 @@ object Materials {
       displacement = Texture("/oktracer/web/textures/rock/Rough_Rock_022_DISP.png"),
       occlusion = Texture("/oktracer/web/textures/rock/Rough_Rock_022_OCC.jpg"),
       roughness = Texture("/oktracer/web/textures/rock/Rough_Rock_022_ROUGH.jpg"),
-      displacementCoefficient = 40 / 255f
+      displacementCoefficient = 40 / 255f,
+      shininess = 50f
   )
 
-  fun load(onLoadComplete: () -> Unit) {
-    val materials = listOf(metal, stone, rock)
+  val crystal = Material(
+      color = Texture("/oktracer/web/textures/crystal/Crystal_002_COLOR.jpg"),
+      normal = Texture("/oktracer/web/textures/crystal/Crystal_002_NORM.jpg"),
+      displacement = Texture("/oktracer/web/textures/crystal/Crystal_002_DISP.png"),
+      occlusion = Texture("/oktracer/web/textures/crystal/Crystal_002_OCC.jpg"),
+      roughness = Texture("/oktracer/web/textures/crystal/Crystal_002_ROUGH.jpg"),
+      displacementCoefficient = 40 / 255f,
+      shininess = 50f
+  )
+
+  fun load(onLoadComplete: () -> Unit = {}) {
+    val materials = listOf(metal, stone, rock, crystal)
     var texturesToLoad = materials.size
     fun onMaterialLoaded() {
       texturesToLoad--
@@ -61,7 +74,10 @@ data class Material(
     val displacement: Texture,
     val occlusion: Texture,
     val roughness: Texture,
-    val displacementCoefficient: Float = 100f / 255f) {
+    val displacementCoefficient: Float = 100f / 255f,
+    val shininess: Float = 1f) {
+
+  var loaded = false
 
   fun load(onLoadComplete: () -> Unit) {
     val textures = listOf(color, normal, displacement, occlusion, roughness)
@@ -70,6 +86,7 @@ data class Material(
     fun onTextureLoaded() {
       texturesToLoad--
       if (texturesToLoad == 0) {
+        loaded = true
         onLoadComplete()
       }
     }
