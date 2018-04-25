@@ -149,9 +149,6 @@ const val FS = """
 """
 
 class Program(val glProgram: WebGLProgram) {
-  val cameraMatrix = mat4.create()
-  val projectionMatrix = mat4.create()
-
   //Camera
   val eyePosition: WebGLUniformLocation?
   val cameraMatrixLocation: WebGLUniformLocation?

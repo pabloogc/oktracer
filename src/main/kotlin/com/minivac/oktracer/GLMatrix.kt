@@ -55,6 +55,7 @@ external class vec3 : Float32Array {
     fun dot(a: vec3, b: vec3): Float
     fun angle(a: vec3, b: vec3): Float
     fun sub(out: vec3, a: vec3, b: vec3)
+    fun add(out: vec3, a: vec3, b: vec3)
   }
 }
 
