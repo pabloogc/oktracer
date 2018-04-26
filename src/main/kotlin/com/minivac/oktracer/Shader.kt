@@ -6,7 +6,6 @@ import org.khronos.webgl.WebGLUniformLocation
 
 //language=GLSL
 const val VS = """
-
     attribute vec3 aVertexPosition;
     attribute vec2 aTexCoord;
 
@@ -27,13 +26,9 @@ const val VS = """
     //Tangent to model space
     varying mat3 vTBN;
     varying vec3 vPosition;
-    varying vec3 vNormal;
-    varying vec3 vTangent;
-    varying vec3 vBitangent;
     varying vec2 vTexCoord;
 
     void main(void) {
-
         vec3 T = normalize(vec3(uMVMatrix * vec4(aTangent,   0.0)));
         vec3 B = normalize(vec3(uMVMatrix * vec4(aBitangent, 0.0)));
         vec3 N = normalize(vec3(uMVMatrix * vec4(aNormal,    0.0)));
@@ -43,14 +38,10 @@ const val VS = """
             * texture2D(uDisplacementSampler, aTexCoord).r
             * uDisplacementCoefficient;
         vec4 displacedPosition = vec4(aVertexPosition + displacement, 1.0);
-        vPosition = (uMVMatrix * displacedPosition).xyz; //The position in model space
 
-        vNormal = aNormal;
-        vTangent = aTangent;
-        vBitangent = aBitangent;
-
-        vTexCoord = aTexCoord; //Interpolated texture values
-        gl_Position = uPMatrix * uCMatrix * uMVMatrix * displacedPosition; //Position in camera space
+        vPosition = (uMVMatrix * displacedPosition).xyz;
+        vTexCoord = aTexCoord;
+        gl_Position = uPMatrix * uCMatrix * uMVMatrix * displacedPosition;
     }
 """
 
@@ -61,7 +52,9 @@ const val FS = """
 
     precision mediump float;
 
+    //Eye
     uniform vec3 uEyePosition;
+    uniform vec3 uEyeDirection;
 
     //Light uniforms
     uniform vec3 uLightPosition[MAX_LIGHTS];
@@ -78,9 +71,6 @@ const val FS = """
     //Material
     varying mat3 vTBN;
     varying vec3 vPosition;
-    varying vec3 vNormal;
-    varying vec3 vTangent;
-    varying vec3 vBitangent;
     varying vec2 vTexCoord;
 
     mat2 transpose(mat2 m) {
@@ -105,8 +95,7 @@ const val FS = """
         vec3 color = vec3(0.0, 0.0, 0.0);
 
         vec3 materialColor = texture2D(uColorSampler, vTexCoord).rgb;
-        vec3 materialNormal = 2.0 * texture2D(uNormalSampler, vTexCoord).xyz - 1.0;
-        materialNormal = normalize(vTBN * materialNormal);
+        vec3 materialNormal = normalize(vTBN * (2.0 * texture2D(uNormalSampler, vTexCoord).xyz - 1.0));
         vec3 materialSpecularColor = materialColor;
         float shininess = (1.0 - texture2D(uRoughnessSampler, vTexCoord).r) * uMaterialShininess;
 
@@ -119,7 +108,9 @@ const val FS = """
 
             //Generic light
             vec3 surfaceToLight = normalize(lightPosition - vPosition);
+            vec3 eyeToLight = normalize(uEyePosition - lightPosition);
             vec3 surfaceToEye = normalize(uEyePosition - vPosition);
+
             float surfaceToLightDistance = length(lightPosition - vPosition);
             float attenuation = 1.0 / (1.0 + attenuationCoefficient * pow(surfaceToLightDistance, 2.0));
 
@@ -141,7 +132,6 @@ const val FS = """
 
             color += ambient + attenuation * (diffuse + specular);
         }
-
         gl_FragColor = vec4(color, 1.0);
     }
 
@@ -151,6 +141,8 @@ const val FS = """
 class Program(val glProgram: WebGLProgram) {
   //Camera
   val eyePosition: WebGLUniformLocation?
+  val eyeDirection: WebGLUniformLocation?
+  //Camera
   val cameraMatrixLocation: WebGLUniformLocation?
   val projectionMatrixLocation: WebGLUniformLocation?
   val modelViewMatrixLocation: WebGLUniformLocation?
@@ -181,6 +173,8 @@ class Program(val glProgram: WebGLProgram) {
     gl.useProgram(glProgram)
     //Camera
     eyePosition = gl.getUniformLocation(glProgram, "uEyePosition")
+    eyeDirection = gl.getUniformLocation(glProgram, "uEyeDirection")
+
     cameraMatrixLocation = gl.getUniformLocation(glProgram, "uCMatrix")
     projectionMatrixLocation = gl.getUniformLocation(glProgram, "uPMatrix")
     modelViewMatrixLocation = gl.getUniformLocation(glProgram, "uMVMatrix")
@@ -217,4 +211,6 @@ class Program(val glProgram: WebGLProgram) {
     gl.useProgram(glProgram)
   }
 }
+
+
 

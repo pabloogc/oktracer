@@ -60,8 +60,8 @@ class Scene {
     gl.enable(DEPTH_TEST)
     gl.depthFunc(LEQUAL)
 
-    applyPerspectiveAndCamera()
-    applyLights()
+    updateCamera()
+    updateLights()
 
     val intensity = 6f
     val distance = 2f
@@ -83,17 +83,19 @@ class Scene {
     meshes.forEach { it.render() }
   }
 
-  private fun applyPerspectiveAndCamera() {
+  private fun updateCamera() {
     mat4.perspective(projectionMatrix, 0.5f, canvas.width.toFloat() / canvas.height, 1f, 100f)
     gl.uniformMatrix4fv(program.projectionMatrixLocation, false, projectionMatrix)
     gl.uniformMatrix4fv(program.cameraMatrixLocation, false, camera.update())
     gl.uniform3fv(program.eyePosition, camera.position)
+    gl.uniform3fv(program.eyeDirection, camera.direction)
   }
 
-  private fun applyLights() {
+  private fun updateLights() {
     val position = lights.flatMap { it.position.toFloatArray().toList() }.toTypedArray()
     val color = lights.flatMap { it.color.toFloatArray().toList() }.toTypedArray()
     val ambient = lights.map { it.ambientCoefficient }.toTypedArray()
+
     gl.uniform3fv(program.lightPositionLocation, position)
     gl.uniform3fv(program.lightColorLocation, color)
     gl.uniform1fv(program.lightAmbientCoefficient, ambient)

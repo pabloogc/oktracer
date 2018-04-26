@@ -10,9 +10,9 @@ class Camera {
 
   var t = 0f
   val position: vec3 = vec3.fromValues(0f, 0f, -10f)
+  val direction: vec3 = vec3.create()
   val matrix: mat4 = mat4.create()
 
-  private val direction: vec3 = vec3.create()
   private val up: vec3 = vec3.create()
   private val side: vec3 = vec3.create()
   private val center: vec3 = vec3.create()

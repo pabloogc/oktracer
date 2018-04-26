@@ -186,7 +186,7 @@ class Cube : Mesh<Cube>() {
 /**
  * Split Octahedron in midpoints, after N iterations we got nice a sphere
  */
-class Sphere(val xc: Int = 80, val yc: Int = 80) : Mesh<Sphere>() {
+class Sphere(val xc: Int = 64, val yc: Int = 64) : Mesh<Sphere>() {
 
   init {
     val vertexCount = xc * yc

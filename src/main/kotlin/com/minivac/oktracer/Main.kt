@@ -1,9 +1,8 @@
 package com.minivac.oktracer
 
 import org.khronos.webgl.WebGLRenderingContext
-import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_TEST
-import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import org.w3c.dom.HTMLCanvasElement
+import org.w3c.dom.events.EventListener
 import kotlin.browser.document
 import kotlin.browser.window
 import kotlin.math.PI
@@ -25,6 +24,12 @@ fun main(args: Array<String>) {
 
 private fun initGL() {
   canvas = document.getElementById("canvas") as HTMLCanvasElement
+  window.addEventListener("resize", EventListener {
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+  })
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
   gl = canvas.getContext("webgl") as WebGLRenderingContext
   program = Program(createProgram(VS, FS)!!)
 }
