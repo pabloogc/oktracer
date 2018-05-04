@@ -1,5 +1,6 @@
 package com.minivac.oktracer
 
+import org.khronos.webgl.Uint8Array
 import org.khronos.webgl.WebGLRenderingContext.Companion.CLAMP_TO_EDGE
 import org.khronos.webgl.WebGLRenderingContext.Companion.LINEAR
 import org.khronos.webgl.WebGLRenderingContext.Companion.RGBA
@@ -13,48 +14,58 @@ import org.w3c.dom.HTMLImageElement
 import kotlin.browser.document
 
 object Materials {
+  val debug = Material(
+      color = FileTexture("/oktracer/web/textures/debug/debug.png"),
+      normal = ByteArrayTexture(1, 1, byteArray = Uint8Array(arrayOf(128, 128, 255, 0).toByteArray())),
+      displacement = ByteArrayTexture(1, 1, byteArray = Uint8Array(arrayOf(0, 0, 0, 0).toByteArray())),
+      occlusion = ByteArrayTexture(1, 1, byteArray = Uint8Array(arrayOf(255, 255, 255, 255).toByteArray())),
+      roughness = ByteArrayTexture(1, 1, byteArray = Uint8Array(arrayOf(0, 0, 0, 0).toByteArray())),
+      displacementCoefficient = 1f,
+      shininess = 1 / 25f
+  )
+
   val metal = Material(
-      color = Texture("/oktracer/web/textures/metal/Metal_plate_005_COLOR.jpg"),
-      normal = Texture("/oktracer/web/textures/metal/Metal_plate_005_NORM.jpg"),
-      displacement = Texture("/oktracer/web/textures/metal/Metal_plate_005_DISP.png"),
-      occlusion = Texture("/oktracer/web/textures/metal/Metal_plate_005_OCC.jpg"),
-      roughness = Texture("/oktracer/web/textures/metal/Metal_plate_005_ROUGH.jpg"),
+      color = FileTexture("/oktracer/web/textures/metal/Metal_plate_005_COLOR.jpg"),
+      normal = FileTexture("/oktracer/web/textures/metal/Metal_plate_005_NORM.jpg"),
+      displacement = FileTexture("/oktracer/web/textures/metal/Metal_plate_005_DISP.png"),
+      occlusion = FileTexture("/oktracer/web/textures/metal/Metal_plate_005_OCC.jpg"),
+      roughness = FileTexture("/oktracer/web/textures/metal/Metal_plate_005_ROUGH.jpg"),
       displacementCoefficient = 10 / 255f,
       shininess = 1 / 25f
   )
 
   val stone = Material(
-      color = Texture("/oktracer/web/textures/stone/Stone_Wall_009_COLOR.jpg"),
-      normal = Texture("/oktracer/web/textures/stone/Stone_Wall_009_NORM.jpg"),
-      displacement = Texture("/oktracer/web/textures/stone/Stone_Wall_009_DISP.png"),
-      occlusion = Texture("/oktracer/web/textures/stone/Stone_Wall_009_OCC.jpg"),
-      roughness = Texture("/oktracer/web/textures/stone/Stone_Wall_009_ROUGH.jpg"),
+      color = FileTexture("/oktracer/web/textures/stone/Stone_Wall_009_COLOR.jpg"),
+      normal = FileTexture("/oktracer/web/textures/stone/Stone_Wall_009_NORM.jpg"),
+      displacement = FileTexture("/oktracer/web/textures/stone/Stone_Wall_009_DISP.png"),
+      occlusion = FileTexture("/oktracer/web/textures/stone/Stone_Wall_009_OCC.jpg"),
+      roughness = FileTexture("/oktracer/web/textures/stone/Stone_Wall_009_ROUGH.jpg"),
       displacementCoefficient = 50 / 255f,
       shininess = 50f
   )
 
   val rock = Material(
-      color = Texture("/oktracer/web/textures/rock/Rough_Rock_022_COLOR.jpg"),
-      normal = Texture("/oktracer/web/textures/rock/Rough_Rock_022_NORM.jpg"),
-      displacement = Texture("/oktracer/web/textures/rock/Rough_Rock_022_DISP.png"),
-      occlusion = Texture("/oktracer/web/textures/rock/Rough_Rock_022_OCC.jpg"),
-      roughness = Texture("/oktracer/web/textures/rock/Rough_Rock_022_ROUGH.jpg"),
+      color = FileTexture("/oktracer/web/textures/rock/Rough_Rock_022_COLOR.jpg"),
+      normal = FileTexture("/oktracer/web/textures/rock/Rough_Rock_022_NORM.jpg"),
+      displacement = FileTexture("/oktracer/web/textures/rock/Rough_Rock_022_DISP.png"),
+      occlusion = FileTexture("/oktracer/web/textures/rock/Rough_Rock_022_OCC.jpg"),
+      roughness = FileTexture("/oktracer/web/textures/rock/Rough_Rock_022_ROUGH.jpg"),
       displacementCoefficient = 40 / 255f,
       shininess = 50f
   )
 
   val crystal = Material(
-      color = Texture("/oktracer/web/textures/crystal/Crystal_002_COLOR.jpg"),
-      normal = Texture("/oktracer/web/textures/crystal/Crystal_002_NORM.jpg"),
-      displacement = Texture("/oktracer/web/textures/crystal/Crystal_002_DISP.png"),
-      occlusion = Texture("/oktracer/web/textures/crystal/Crystal_002_OCC.jpg"),
-      roughness = Texture("/oktracer/web/textures/crystal/Crystal_002_ROUGH.jpg"),
+      color = FileTexture("/oktracer/web/textures/crystal/Crystal_002_COLOR.jpg"),
+      normal = FileTexture("/oktracer/web/textures/crystal/Crystal_002_NORM.jpg"),
+      displacement = FileTexture("/oktracer/web/textures/crystal/Crystal_002_DISP.png"),
+      occlusion = FileTexture("/oktracer/web/textures/crystal/Crystal_002_OCC.jpg"),
+      roughness = FileTexture("/oktracer/web/textures/crystal/Crystal_002_ROUGH.jpg"),
       displacementCoefficient = 40 / 255f,
       shininess = 50f
   )
 
   fun load(onLoadComplete: () -> Unit = {}) {
-    val materials = listOf(metal, stone, rock, crystal)
+    val materials = listOf(debug, metal, stone, rock, crystal)
     var texturesToLoad = materials.size
     fun onMaterialLoaded() {
       texturesToLoad--
@@ -96,30 +107,68 @@ data class Material(
   }
 }
 
-data class Texture(val path: String) {
+abstract class Texture(val linear: Boolean = true, val repeat: Boolean = false) {
   val texture = gl.createTexture()!!
+  var width = -1
+  var height = -1
 
-  private fun isPowerOfTwo(v: Int): Boolean {
+  protected fun isPowerOfTwo(v: Int): Boolean {
     return (v and (v - 1)) == 0
   }
 
-  fun load(onLoadComplete: () -> Unit) {
+  protected fun generateMimmaps() {
+    if (isPowerOfTwo(width) && isPowerOfTwo(height)) {
+      gl.generateMipmap(TEXTURE_2D)
+    } else {
+      gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR)
+      gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR)
+      gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE)
+      gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE)
+    }
+  }
+
+  abstract fun load(onLoadComplete: () -> Unit)
+}
+
+class FileTexture(val path: String,
+                  linear: Boolean = true,
+                  repeat: Boolean = false) : Texture(linear = linear, repeat = repeat) {
+
+  override fun load(onLoadComplete: () -> Unit) {
     val image = document.createElement("img") as HTMLImageElement
     image.src = path
     image.addEventListener("load", {
       console.log("Texture $path loaded")
+      width = image.width
+      height = image.height
       // Now that the image has loaded make copy it to the texture.
       gl.bindTexture(TEXTURE_2D, texture)
       gl.texImage2D(TEXTURE_2D, 0, RGBA, RGBA, UNSIGNED_BYTE, image)
-      if (isPowerOfTwo(image.width) && isPowerOfTwo(image.height)) {
-        gl.generateMipmap(TEXTURE_2D)
-      } else {
-        gl.texParameteri(TEXTURE_2D, TEXTURE_MAG_FILTER, LINEAR)
-        gl.texParameteri(TEXTURE_2D, TEXTURE_MIN_FILTER, LINEAR)
-        gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_S, CLAMP_TO_EDGE)
-        gl.texParameteri(TEXTURE_2D, TEXTURE_WRAP_T, CLAMP_TO_EDGE)
-      }
+      generateMimmaps()
       onLoadComplete()
     })
   }
 }
+
+class ByteArrayTexture(width: Int, height: Int,
+                       val byteArray: Uint8Array,
+                       linear: Boolean = true,
+                       repeat: Boolean = false) : Texture(linear = linear, repeat = repeat) {
+  init {
+    this.width = width
+    this.height = height
+  }
+
+  override fun load(onLoadComplete: () -> Unit) {
+    gl.bindTexture(TEXTURE_2D, texture)
+    gl.texImage2D(TEXTURE_2D, 0, RGBA, width, height, 0, RGBA, UNSIGNED_BYTE, byteArray)
+    generateMimmaps()
+    onLoadComplete()
+  }
+}
+
+private fun Array<Int>.toByteArray(): Array<Byte> {
+  return this.map { it.toByte() }.toTypedArray()
+}
+
+

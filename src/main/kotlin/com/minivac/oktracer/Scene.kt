@@ -1,10 +1,16 @@
 package com.minivac.oktracer
 
+import com.minivac.oktracer.matrix.*
+import com.minivac.oktracer.mesh.Cube
+import com.minivac.oktracer.mesh.Grid
+import com.minivac.oktracer.mesh.Mesh
+import com.minivac.oktracer.mesh.Sphere
 import org.khronos.webgl.WebGLRenderingContext.Companion.COLOR_BUFFER_BIT
 import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_BUFFER_BIT
 import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_TEST
 import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import kotlin.math.cos
+import kotlin.math.sin
 
 const val MAX_LIGHTS = 2
 
@@ -18,35 +24,45 @@ class Scene {
   val axisWidth = 0.005f
   val axisLength = 10f
 
-  private val meshes: List<Mesh<*>> = listOf(
+  private val meshes: List<Mesh> = listOf(
       Sphere().transform {
         translation.x = 2.2f
         material = Materials.metal
       },
       Sphere().transform {
         translation.x = -2.2f
-        material = Materials.rock
+        material = Materials.debug
       },
       Sphere().transform {
         translation.x = 0f
         material = Materials.stone
       }
-//      Cube().transform {
-//        material = Materials.metal
-//        translation.x = 2f
+//      Grid(xc = 1, yc = 1, tc = 2).transform {
+//        translation.x = 0f
+//        material = Materials.debug
 //      }
+//      Grid(xc = 1, yc = 1, tc = 2).transform {
+//        translation.y = -1f
+//        scale.set(100f, 1f, 100f)
+//        rotation.x = 90f.toRad()
+//        material = Materials.debug
+//      }
+
   )
 
-  private val axis: List<Mesh<*>> = listOf(
+  private val axis: List<Mesh> = listOf(
       Cube().transform {
+        material = Materials.debug
         scale.set(axisLength, axisWidth, axisWidth)
         translation.x = axisLength
       },
       Cube().transform {
+        material = Materials.debug
         scale.set(axisWidth, axisLength, axisWidth)
         translation.y = axisLength
       },
       Cube().transform {
+        material = Materials.debug
         scale.set(axisWidth, axisWidth, axisLength)
         translation.z = axisLength
       }
@@ -55,13 +71,10 @@ class Scene {
   fun render() {
     t += PI / 360f
 
-    program.useProgram()
+    camera.update()
 
     gl.enable(DEPTH_TEST)
     gl.depthFunc(LEQUAL)
-
-    updateCamera()
-    updateLights()
 
     val intensity = 6f
     val distance = 2f
@@ -71,34 +84,17 @@ class Scene {
 
     lights[1].color.set(intensity, intensity, intensity)
     lights[1].ambientCoefficient = 0f
-    lights[1].position.set(camera.position)
+    lights[1].position.set(0f, distance * cos(t), distance * sin(t))
+//    lights[1].position.set(camera.position)
 
     meshes.forEach {
       it.transform {
-        rotation.y = 2 * t
+        //rotation.y = 2 * t
       }
     }
 
-    //axis.forEach { it.render() }
-    meshes.forEach { it.render() }
-  }
+    defaultProgram.render(camera, meshes, lights)
 
-  private fun updateCamera() {
-    mat4.perspective(projectionMatrix, 0.5f, canvas.width.toFloat() / canvas.height, 1f, 100f)
-    gl.uniformMatrix4fv(program.projectionMatrixLocation, false, projectionMatrix)
-    gl.uniformMatrix4fv(program.cameraMatrixLocation, false, camera.update())
-    gl.uniform3fv(program.eyePosition, camera.position)
-    gl.uniform3fv(program.eyeDirection, camera.direction)
-  }
-
-  private fun updateLights() {
-    val position = lights.flatMap { it.position.toFloatArray().toList() }.toTypedArray()
-    val color = lights.flatMap { it.color.toFloatArray().toList() }.toTypedArray()
-    val ambient = lights.map { it.ambientCoefficient }.toTypedArray()
-
-    gl.uniform3fv(program.lightPositionLocation, position)
-    gl.uniform3fv(program.lightColorLocation, color)
-    gl.uniform1fv(program.lightAmbientCoefficient, ambient)
   }
 
   fun clear() {

@@ -1,11 +1,28 @@
-package com.minivac.oktracer
+package com.minivac.oktracer.render
 
-import org.khronos.webgl.WebGLProgram
+import com.minivac.oktracer.*
+import com.minivac.oktracer.matrix.toFloatArray
+import com.minivac.oktracer.mesh.Mesh
+import org.khronos.webgl.WebGLRenderingContext.Companion.ARRAY_BUFFER
+import org.khronos.webgl.WebGLRenderingContext.Companion.ELEMENT_ARRAY_BUFFER
+import org.khronos.webgl.WebGLRenderingContext.Companion.FLOAT
+import org.khronos.webgl.WebGLRenderingContext.Companion.LINE_LOOP
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE0
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE1
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE2
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE3
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE4
+import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE_2D
+import org.khronos.webgl.WebGLRenderingContext.Companion.TRIANGLES
+import org.khronos.webgl.WebGLRenderingContext.Companion.UNSIGNED_SHORT
 import org.khronos.webgl.WebGLUniformLocation
+import org.w3c.dom.events.EventListener
+import org.w3c.dom.events.KeyboardEvent
+import kotlin.browser.document
 
 
 //language=GLSL
-const val VS = """
+private const val VS = """
     attribute vec3 aVertexPosition;
     attribute vec2 aTexCoord;
 
@@ -46,7 +63,7 @@ const val VS = """
 """
 
 //language=GLSL
-const val FS = """
+private const val FS = """
 
     #define MAX_LIGHTS $MAX_LIGHTS
 
@@ -131,6 +148,7 @@ const val FS = """
             vec3 specular = specularCoefficient * materialSpecularColor * lightColor;
 
             color += ambient + attenuation * (diffuse + specular);
+//            color += diffuseCoefficient;
         }
         gl_FragColor = vec4(color, 1.0);
     }
@@ -138,36 +156,52 @@ const val FS = """
 
 """
 
-class Program(val glProgram: WebGLProgram) {
+class DefaultProgram {
+  val glProgram by lazy {
+    createProgram(VS, FS)!!
+  }
+
+  init {
+    document.addEventListener("keydown", EventListener {
+      it as KeyboardEvent
+      when (it.key) {
+        "b" -> drawMode = TRIANGLES
+        "n" -> drawMode = LINE_LOOP
+      }
+    })
+  }
+
+  private var drawMode = TRIANGLES
+
   //Camera
-  val eyePosition: WebGLUniformLocation?
-  val eyeDirection: WebGLUniformLocation?
+  private val eyePosition: WebGLUniformLocation?
+  private val eyeDirection: WebGLUniformLocation?
   //Camera
-  val cameraMatrixLocation: WebGLUniformLocation?
-  val projectionMatrixLocation: WebGLUniformLocation?
-  val modelViewMatrixLocation: WebGLUniformLocation?
-  val normalMatrixLocation: WebGLUniformLocation?
+  private val cameraMatrixLocation: WebGLUniformLocation?
+  private val projectionMatrixLocation: WebGLUniformLocation?
+  private val modelViewMatrixLocation: WebGLUniformLocation?
+  private val normalMatrixLocation: WebGLUniformLocation?
 
   //Lights
-  val lightPositionLocation: WebGLUniformLocation?
-  val lightColorLocation: WebGLUniformLocation?
-  val lightAmbientCoefficient: WebGLUniformLocation?
+  private val lightPositionLocation: WebGLUniformLocation?
+  private val lightColorLocation: WebGLUniformLocation?
+  private val lightAmbientCoefficient: WebGLUniformLocation?
 
   //Material
-  val colorSampler: WebGLUniformLocation?
-  val normalSampler: WebGLUniformLocation?
-  val occlusionSampler: WebGLUniformLocation?
-  val roughnessSampler: WebGLUniformLocation?
-  val displacementSampler: WebGLUniformLocation?
-  val displacementCoefficient: WebGLUniformLocation?
-  val materialShininess: WebGLUniformLocation?
+  private val colorSampler: WebGLUniformLocation?
+  private val normalSampler: WebGLUniformLocation?
+  private val occlusionSampler: WebGLUniformLocation?
+  private val roughnessSampler: WebGLUniformLocation?
+  private val displacementSampler: WebGLUniformLocation?
+  private val displacementCoefficient: WebGLUniformLocation?
+  private val materialShininess: WebGLUniformLocation?
 
   //Attributes
-  val vertexPositionLocation: Int
-  val normalLocation: Int
-  val tangentLocation: Int
-  val bitangentLocation: Int
-  val texCoordLocation: Int
+  private val vertexPositionLocation: Int
+  private val normalLocation: Int
+  private val tangentLocation: Int
+  private val bitangentLocation: Int
+  private val texCoordLocation: Int
 
   init {
     gl.useProgram(glProgram)
@@ -207,9 +241,80 @@ class Program(val glProgram: WebGLProgram) {
     gl.enableVertexAttribArray(texCoordLocation)
   }
 
-  fun useProgram() {
+  fun render(camera: Camera, meshList: List<Mesh>, lights: Array<Light>) {
+    gl.viewport(0, 0, canvas.width, canvas.height)
     gl.useProgram(glProgram)
+
+    gl.uniformMatrix4fv(projectionMatrixLocation, false, camera.projectionMatrix)
+    gl.uniformMatrix4fv(cameraMatrixLocation, false, camera.lookMatrix)
+    gl.uniform3fv(eyePosition, camera.position)
+    gl.uniform3fv(eyeDirection, camera.direction)
+
+    val position = lights.flatMap { it.position.toFloatArray().toList() }.toTypedArray()
+    val color = lights.flatMap { it.color.toFloatArray().toList() }.toTypedArray()
+    val ambient = lights.map { it.ambientCoefficient }.toTypedArray()
+
+    gl.uniform3fv(lightPositionLocation, position)
+    gl.uniform3fv(lightColorLocation, color)
+    gl.uniform1fv(lightAmbientCoefficient, ambient)
+
+    meshList
+        .filter { it.material.loaded }
+        .forEach { mesh ->
+          gl.uniformMatrix4fv(modelViewMatrixLocation, false, mesh.modelMatrix)
+          gl.uniformMatrix3fv(normalMatrixLocation, false, mesh.normalMatrix)
+
+          gl.bindBuffer(ARRAY_BUFFER, mesh.verticesBuffer)
+          gl.vertexAttribPointer(vertexPositionLocation, 3, FLOAT, false, 0, 0)
+
+          gl.bindBuffer(ARRAY_BUFFER, mesh.tangentBuffer)
+          gl.vertexAttribPointer(tangentLocation, 3, FLOAT, false, 0, 0)
+
+          gl.bindBuffer(ARRAY_BUFFER, mesh.bitangentBuffer)
+          gl.vertexAttribPointer(bitangentLocation, 3, FLOAT, false, 0, 0)
+
+          gl.bindBuffer(ARRAY_BUFFER, mesh.normalBuffer)
+          gl.vertexAttribPointer(normalLocation, 3, FLOAT, false, 0, 0)
+
+          gl.bindBuffer(ARRAY_BUFFER, mesh.texCoordBuffer)
+          gl.vertexAttribPointer(texCoordLocation, 2, FLOAT, false, 0, 0)
+
+          gl.activeTexture(TEXTURE0)
+          gl.bindTexture(TEXTURE_2D, mesh.material.color.texture)
+          gl.uniform1i(colorSampler, 0)
+
+          gl.activeTexture(TEXTURE1)
+          gl.bindTexture(TEXTURE_2D, mesh.material.normal.texture)
+          gl.uniform1i(normalSampler, 1)
+
+          gl.activeTexture(TEXTURE2)
+          gl.bindTexture(TEXTURE_2D, mesh.material.displacement.texture)
+          gl.uniform1i(displacementSampler, 2)
+          gl.uniform1f(displacementCoefficient, mesh.material.displacementCoefficient)
+
+          gl.activeTexture(TEXTURE3)
+          gl.bindTexture(TEXTURE_2D, mesh.material.roughness.texture)
+          gl.uniform1i(roughnessSampler, 3)
+          gl.uniform1f(materialShininess, mesh.material.shininess)
+
+          gl.activeTexture(TEXTURE4)
+          gl.bindTexture(TEXTURE_2D, mesh.material.occlusion.texture)
+          gl.uniform1i(occlusionSampler, 4)
+
+          gl.bindBuffer(ELEMENT_ARRAY_BUFFER, mesh.elementsBuffer)
+          if (drawMode == TRIANGLES) {
+            gl.drawElements(TRIANGLES, mesh.elementsCount, UNSIGNED_SHORT, 0)
+          } else {
+            for (i in 0 until mesh.elementsCount step 3) {
+              gl.drawElements(LINE_LOOP, 3, UNSIGNED_SHORT, i * 2)
+            }
+          }
+        }
+
+    gl.useProgram(null)
   }
+
+
 }
 
 

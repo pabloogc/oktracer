@@ -17,7 +17,7 @@ fun createProgram(vertexSource: String, fragmentSource: String): WebGLProgram? {
   gl.linkProgram(program)
 
   if (gl.getProgramParameter(program, LINK_STATUS) != true) {
-    console.error("Could not initialise program")
+    console.error("Could not initialise defaultProgram")
   }
 
   return program
@@ -32,6 +32,9 @@ fun createShader(type: Int, source: String): WebGLShader? {
   if (status != true) {
     console.log(status)
     console.error(gl.getShaderInfoLog(shader))
+    source.split('\n').forEachIndexed { i, l ->
+      console.log("${i.toString().padEnd(3)}: $l")
+    }
     return null
   }
   return shader

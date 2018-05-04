@@ -1,5 +1,6 @@
 package com.minivac.oktracer
 
+import com.minivac.oktracer.matrix.*
 import org.w3c.dom.events.EventListener
 import org.w3c.dom.events.KeyboardEvent
 import kotlin.browser.document
@@ -8,22 +9,20 @@ import kotlin.math.sin
 
 class Camera {
 
-  var t = 0f
-  val position: vec3 = vec3.fromValues(0f, 0f, -10f)
+  val position: vec3 = vec3(0f, 1f, 10f)
   val direction: vec3 = vec3.create()
-  val matrix: mat4 = mat4.create()
+  val projectionMatrix = mat4.create()
+  val lookMatrix: mat4 = mat4.create()
 
   private val up: vec3 = vec3.create()
   private val side: vec3 = vec3.create()
   private val center: vec3 = vec3.create()
-  private var polar: Float = PI_HALF
+  private var polar: Float = -PI_HALF
   private var azimuth: Float = PI_HALF
 
   //Mouse controls
   private val mouseEventListener: EventListener
   private val keyEventListener: EventListener
-  private var lastX = -1
-  private var lastY = -1
   private var sensitivity = 0.001f * PI
   private var speed = 0.1f
   private var pressedKeys = mutableMapOf<String, Boolean>()
@@ -68,10 +67,13 @@ class Camera {
     })
   }
 
-  fun update(): mat4 {
-    t = PI / 360f
-    //console.log(polar)
-    //polar = (polar + t) % PI
+
+  fun update() {
+    mat4.perspective(projectionMatrix,
+        0.5f,
+        canvas.width.toFloat() / canvas.height,
+        1f,
+        100f)
 
     direction.set(
         x = cos(polar) * sin(azimuth),
@@ -81,7 +83,7 @@ class Camera {
 
     up.set(
         x = 0f,
-        y = cos(azimuth - PI_HALF),
+        y = 1f,
         z = 0f
     )
 
@@ -107,10 +109,9 @@ class Camera {
     vec3.add(center, position, direction)
 
     mat4.lookAt(
-        out = matrix,
+        out = lookMatrix,
         eye = position,
         center = center,
         up = up)
-    return matrix
   }
 }
