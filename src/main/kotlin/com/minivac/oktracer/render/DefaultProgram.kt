@@ -4,8 +4,10 @@ import com.minivac.oktracer.*
 import com.minivac.oktracer.matrix.toFloatArray
 import com.minivac.oktracer.mesh.Mesh
 import org.khronos.webgl.WebGLRenderingContext.Companion.ARRAY_BUFFER
+import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_TEST
 import org.khronos.webgl.WebGLRenderingContext.Companion.ELEMENT_ARRAY_BUFFER
 import org.khronos.webgl.WebGLRenderingContext.Companion.FLOAT
+import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import org.khronos.webgl.WebGLRenderingContext.Companion.LINE_LOOP
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE0
 import org.khronos.webgl.WebGLRenderingContext.Companion.TEXTURE1
@@ -152,8 +154,6 @@ private const val FS = """
         }
         gl_FragColor = vec4(color, 1.0);
     }
-
-
 """
 
 class DefaultProgram {
@@ -233,17 +233,20 @@ class DefaultProgram {
     normalLocation = gl.getAttribLocation(glProgram, "aNormal")
     tangentLocation = gl.getAttribLocation(glProgram, "aTangent")
     bitangentLocation = gl.getAttribLocation(glProgram, "aBitangent")
-
-    gl.enableVertexAttribArray(vertexPositionLocation)
-    gl.enableVertexAttribArray(normalLocation)
-    gl.enableVertexAttribArray(tangentLocation)
-    gl.enableVertexAttribArray(bitangentLocation)
-    gl.enableVertexAttribArray(texCoordLocation)
   }
 
   fun render(camera: Camera, meshList: List<Mesh>, lights: Array<Light>) {
     gl.viewport(0, 0, canvas.width, canvas.height)
     gl.useProgram(glProgram)
+
+
+    gl.enable(DEPTH_TEST)
+    gl.depthFunc(LEQUAL)
+    gl.enableVertexAttribArray(vertexPositionLocation)
+    gl.enableVertexAttribArray(normalLocation)
+    gl.enableVertexAttribArray(tangentLocation)
+    gl.enableVertexAttribArray(bitangentLocation)
+    gl.enableVertexAttribArray(texCoordLocation)
 
     gl.uniformMatrix4fv(projectionMatrixLocation, false, camera.projectionMatrix)
     gl.uniformMatrix4fv(cameraMatrixLocation, false, camera.lookMatrix)
@@ -311,10 +314,14 @@ class DefaultProgram {
           }
         }
 
+    gl.disable(DEPTH_TEST)
+    gl.disableVertexAttribArray(vertexPositionLocation)
+    gl.disableVertexAttribArray(normalLocation)
+    gl.disableVertexAttribArray(tangentLocation)
+    gl.disableVertexAttribArray(bitangentLocation)
+    gl.disableVertexAttribArray(texCoordLocation)
     gl.useProgram(null)
   }
-
-
 }
 
 

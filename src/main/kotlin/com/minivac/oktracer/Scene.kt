@@ -2,13 +2,10 @@ package com.minivac.oktracer
 
 import com.minivac.oktracer.matrix.*
 import com.minivac.oktracer.mesh.Cube
-import com.minivac.oktracer.mesh.Grid
 import com.minivac.oktracer.mesh.Mesh
 import com.minivac.oktracer.mesh.Sphere
 import org.khronos.webgl.WebGLRenderingContext.Companion.COLOR_BUFFER_BIT
 import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_BUFFER_BIT
-import org.khronos.webgl.WebGLRenderingContext.Companion.DEPTH_TEST
-import org.khronos.webgl.WebGLRenderingContext.Companion.LEQUAL
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -73,9 +70,6 @@ class Scene {
 
     camera.update()
 
-    gl.enable(DEPTH_TEST)
-    gl.depthFunc(LEQUAL)
-
     val intensity = 6f
     val distance = 2f
     lights[0].color.set(intensity, intensity, intensity)
@@ -89,10 +83,11 @@ class Scene {
 
     meshes.forEach {
       it.transform {
-        //rotation.y = 2 * t
+        rotation.y = 2 * t
       }
     }
 
+//    shadowProgram.render(camera, meshes, lights)
     defaultProgram.render(camera, meshes, lights)
 
   }

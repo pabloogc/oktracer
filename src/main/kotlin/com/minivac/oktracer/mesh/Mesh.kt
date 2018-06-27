@@ -1,19 +1,16 @@
 package com.minivac.oktracer.mesh
 
-import com.minivac.oktracer.*
+import com.minivac.oktracer.Material
+import com.minivac.oktracer.Materials
+import com.minivac.oktracer.gl
 import com.minivac.oktracer.matrix.*
 import org.khronos.webgl.Float32Array
 import org.khronos.webgl.Uint16Array
 import org.khronos.webgl.WebGLBuffer
 import org.khronos.webgl.WebGLRenderingContext.Companion.ARRAY_BUFFER
 import org.khronos.webgl.WebGLRenderingContext.Companion.ELEMENT_ARRAY_BUFFER
-import org.khronos.webgl.WebGLRenderingContext.Companion.LINE_LOOP
 import org.khronos.webgl.WebGLRenderingContext.Companion.STATIC_DRAW
-import org.khronos.webgl.WebGLRenderingContext.Companion.TRIANGLES
 import org.khronos.webgl.get
-import org.w3c.dom.events.EventListener
-import org.w3c.dom.events.KeyboardEvent
-import kotlin.browser.document
 
 data class MeshData(
     val vertices: List<vec3>,
@@ -41,10 +38,10 @@ abstract class Mesh {
   var material: Material = Materials.metal
 
   @Suppress("UNCHECKED_CAST")
-  fun <T> transform(fn: T.() -> Unit): T {
-    fn(this as T)
+  fun <T> transform(fn: Mesh.() -> Unit): T {
+    this.fn()
     updateTransform()
-    return this
+    return this as T
   }
 
   private fun updateTransform() {

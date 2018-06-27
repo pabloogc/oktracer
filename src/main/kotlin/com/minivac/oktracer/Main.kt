@@ -38,8 +38,8 @@ private fun initGL() {
 }
 
 private fun resizeCanvas() {
-  val bufferWidth = 1920
-  val bufferHeight = 1440
+  val bufferWidth = 640 * 2
+  val bufferHeight = 480 * 2
   val canvasWidth = 640
   val canvasHeight = 480
 
